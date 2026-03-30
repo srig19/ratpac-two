@@ -82,8 +82,8 @@ class LightPathCalculator {
   /// @param[in] refRIndex The refractive index of the refractive media
   ///
   /// @return The refracted unit vector. Same as incidentVec if (fStraightLine) is true.
-  TVector3 PathRefraction(const TVector3& incidentVec, const TVector3& incidentSurfVec, const Double_t incRIndex,
-                          const Double_t refRIndex);
+  TVector3 PathRefraction(const TVector3& incidentVec, const TVector3& incidentPoint, const Double_t& incRIndex,
+                          const Double_t& refRIndex);
 
   /// Calculate the refracted path. This is called when a RTSafe fails or
   /// if a straight line is requested by the user from the beginning.
@@ -100,157 +100,15 @@ class LightPathCalculator {
   /// edge if False
   ///
   /// @return The point where the light path intersects either edge of the acrylic.
-  TVector3 LightPathCalculator::IntersectAcrylic(const TVector3& initPos, const TVector3& initDir,
-                                                 const bool& outerEdge);
+  TVector3 IntersectAcrylic(const TVector3& initPos, const TVector3& initDir, const bool& outerEdge);
 
-  //////////////////////////////////////////////////
-  ////////          UTILITY ROUTINES        ////////
-  //////////////////////////////////////////////////
-
-  /// Utility Routines for refraction between IV/ Acrylic / OV
-  /// 1-3: Inside and Outside light path types (IAO and O)
-  /// 4-5: Outside light path types only (OAIAO)
-  /// ThetaResidual: The difference between fPMTTargetTheta and the sum
-  /// of ( Theta1st + Theta2nd + Theta3rd )
-  /// or ( Theta1st + Theta2nd + Theta3rd + Theta4th + Theta5th )
-  /// depending on light path type
-
-  /// For a typical path there are various angles defined. A path is calculated
-  /// in the 2D-plane containing BOTH the start(source) position and the end(pmt)
-  /// position. This ensures that the path calculated is the minimum refracted
-  /// path.
-  /// To begin, a specific cordinate system is set up for each path, the (x,y,z) directions of this
-  /// coordinate system are defined as follows:
-
-  /// x : The direction defined by the radial vector pointing from the origin (centre of IV)
-  ///     to the source position.
-  /// z : The direction perpendicular to both the radial vector from the origin (centre of IV)
-  ///     to the source position, and the radial vector from the origin (centre of IV) to the
-  ///     end position. Mathematically speaking, the z-unit direction defines the 2D-plane
-  ///     in which the path is calculated
-  /// y : The direction defined by the cross product of 'z CROSS x'. The y direction
-  ///     is therefore perpendicular to both x and z directions, but lies in the same
-  ///     2D-plane as the x direction.
-
-  /// These are utility routines which calculate the angle of refraction between
-  /// the material boundaries in the detector. For a typical path whose start position is
-  /// inside the IV, there will be three sets of angles:
-
-  /// 1. The angle between the source position and the IV and Acrylic interface point
-  ///    as viewed from the origin (centre of IV).
-  /// 2. The angle between the first interface point (see above [1.]) and the Acrylic/OV interface
-  ///    point as viewed from the origin (centre of IV).
-  /// 3. The angle between the second interface point (see above [2.]) and the end position
-  ///    of the path (PMT position).
-
-  /// In the following, 'theta' is the test value for the initial direction of the path
-  /// which is minimised against in RTSafe(). It is the initial and defining angle which
-  /// ultimate determines the paths course throughout the rest of the detector and consequently
-  /// the values of Theta1, Theta2, Theta3 etc. which follow as a result.
-
-  /// The angle between the source position and the first AV intersection point
-  /// as viewed from the origin (centre of AV)
+  // Wrapper function to avoid TGraph using extrapolation beyond the bounding points.
+  // It's possible that using the default extrapolation returns unphysical (negative) values
+  /// @param[in] graph The graph containing xy datasets loaded from the db
+  /// @param[in] energy The wavelength in nm
   ///
-  /// @param[in] theta (passed by reference).
-  /// @return The angle between the source position and the first intersection point
-  /// for this value of theta.
-  Double_t Theta1st(const Double_t& theta);
-
-  /// The derivative on this first angle (Theta1) with respect to 'theta'
-  ///
-  /// @param[in] theta (passed by reference).
-  /// @return The derivative on this first angle (Theta1) with respect to 'theta'
-  Double_t DTheta1st(const Double_t& theta);
-
-  /// The angle between the first AV intersection point and the second AV interseciton point
-  /// as viewed from the origin (centre of AV)
-  ///
-  /// @param[in] theta (passed by reference).
-  /// @return The angle between the first AV intersection point and the second AV interseciton
-  /// point as viewed from the origin (centre of AV)
-  Double_t Theta2nd(const Double_t& theta);
-
-  /// The derivative on this second angle (Theta2) with respect to 'theta'
-  ///
-  /// @param[in] theta (passed by reference).
-  /// @return The derivative on this second angle (Theta2) with respect to 'theta'
-  Double_t DTheta2nd(const Double_t& theta);
-
-  /// The angle between the second AV intersection point and either the PMT position (source
-  /// inside the AV) or the third intersection point (source outside the AV).
-  ///
-  /// @param[in] theta (passed by reference).
-  /// @return The angle between the second AV intersection point and either the
-  /// PMT position (source inside the AV) or the third intersection point
-  /// (source outside the AV).
-  Double_t Theta3rd(const Double_t& theta);
-
-  /// The derivative on this third angle (Theta3) with respect to 'theta'
-  ///
-  /// @param[in] theta (passed by reference).
-  /// @return The derivative on this third angle (Theta3) with respect to 'theta'
-  Double_t DTheta3rd(const Double_t& theta);
-
-  /// The angle between the third AV intersection point and the fourth
-  /// intersection point (source outside the AV).
-  ///
-  /// @param[in] theta (passed by reference).
-  /// @return The angle between the third AV intersection point and the fourth
-  /// intersection point (source outside the AV).
-  Double_t Theta4th(const Double_t& theta);
-
-  /// The derivative on this fourth angle (Theta4) with respect to 'theta'
-  ///
-  /// @param[in] theta (passed by reference).
-  /// @return The derivative on this fourth angle (Theta4) with respect to 'theta'
-  Double_t DTheta4th(const Double_t& theta);
-
-  /// The angle between the fourth AV intersection point and the fifth
-  /// intersection point (source outside the AV).
-  ///
-  /// @param[in] theta (passed by reference).
-  /// @return The angle between the third AV intersection point and the fifth
-  /// intersection point (source outside the AV).
-  Double_t Theta5th(const Double_t& theta);
-
-  /// The derivative on this fifth angle (Theta5) with respect to 'theta'
-  ///
-  /// @param[in] theta (passed by reference).
-  /// @return The derivative on this fifth angle (Theta5) with respect to 'theta'
-  Double_t DTheta5th(const Double_t& theta);
-
-  /// Calculate the residual between the target angle between the source and PMT position
-  /// and the calculated value.
-  ///
-  /// @param[in] theta (passed by reference).
-  /// @return The residual between the target angle between the source and PMT position
-  /// and the calculated value.
-  Double_t ThetaResidual(const Double_t& theta);
-
-  /// Calculate the derivative on this residual with respect to 'theta'
-  ///
-  /// @param[in] theta (passed by reference).
-  /// @return The derivative on this residual with respect to 'theta'
-  Double_t DThetaResidual(const Double_t& theta);
-
-  /// Using a combination of Newton-Raphson and bisection methods,
-  /// this function returns the root of the function 'LightPathCalculator::Func'
-  /// defined on the domain [x1, x2] to within an acceptable accuracy of +/- xAcc
-  /// It returns the minimised (optimal) value of 'theta'
-  ///
-  /// @param[in] x1 The minimum possible value of 'theta' required.
-  /// @param[in] x2 The maximum possible value of 'theta' required.
-  /// @param[in] xAcc The acceptable precision allowed on this value of 'theta'
-  /// @return The minimised, optimal value of 'theta' for this path.
-  Double_t RTSafe(Double_t x1, Double_t x2, Double_t xAcc = 1.0e-3);
-
-  /// Utility function used by 'RTSafe()' to perform the minimiation for
-  /// the optimal value of 'theta'.
-  ///
-  /// @param[in] theta The test value of 'theta' for this path.
-  /// @param[in,out] funcVal Computation of 'ThetaResidual()' based on 'theta'
-  /// @param[in,out] dFuncVal The derivative on the above value with respect to 'theta'
-  void FuncD(Double_t theta, Double_t& funcVal, Double_t& dFuncVal);
+  /// @return The refractive index in the scintillator for this wavelength (energy)
+  Double_t InterpolateTGraph(const TGraph& graph, const Double_t wl);
 
   /////////////////////////////////
   ////////     GETTERS     ////////
@@ -284,7 +142,6 @@ class LightPathCalculator {
   TVector3 GetStartPos() const { return fStartPos; }
   TVector3 GetEndPos() const { return fEndPos; }
   TVector3 GetLightPathEndPos() const { return fLightPathEndPos; }
-  Double_t GetPMTTargetTheta() const { return fPMTTargetTheta; }
 
   /// Path Status Flags
   Bool_t GetIsTIR() const { return fIsTIR; }
@@ -342,7 +199,6 @@ class LightPathCalculator {
   void SetStartPos(const TVector3& pos) { fStartPos = pos; }
   void SetEndPos(const TVector3& pos) { fEndPos = pos; }
   void SetLightPathEndPos(const TVector3& pos) { fLightPathEndPos = pos; }
-  void SetPMTTargetTheta(const Double_t theta) { fPMTTargetTheta = theta; }
 
   /// Path Status Flags
   void SetIsTIR(const Bool_t isTIR) { fIsTIR = isTIR; }
@@ -402,7 +258,6 @@ class LightPathCalculator {
   TVector3 fStartPos;           // Start position of the light path (event position)
   TVector3 fEndPos;             // Required end position of the light path (PMT position)
   TVector3 fLightPathEndPos;    // Calculated end position of the light path
-  Double_t fPMTTargetTheta;     // The target PMT theta angle for the light path
   std::string fStartingRegion;  // The region of the starting position.
 
   Bool_t fIsTIR;         // TRUE: Total Internal Reflection encountered FALSE: It wasn't

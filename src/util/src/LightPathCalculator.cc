@@ -297,11 +297,11 @@ ClassImp(RAT::LightPathCalculator)
     fIsTIR = false;
   }
 
-  Bool_t CalculateDistancesOV(const TVector3& eventPos, const TVector3& pmtPos) {
+  Bool_t LightPathCalculator::CalculateDistancesOV(const TVector3& eventPos, const TVector3& pmtPos) {
     return false;
   }  // Placeholder function
 
-  void PathCalculation(const TVector3& initDir) {
+  void LightPathCalculator::PathCalculation(const TVector3& initDir) {
     fInitialLightVec = initDir.Unit();
 
     if (fStartingRegion == "IV") {
@@ -367,7 +367,7 @@ ClassImp(RAT::LightPathCalculator)
 
   TVector3 LightPathCalculator::IntersectAcrylic(const TVector3& initPos, const TVector3& initDir,
                                                  const bool& outerEdge) {
-    Double_t startingRho = TMath::Sqrt(pow(initPos.X(), 2) + pow(initPos.Y(), 2));
+    Double_t startingRho = TMath::Sqrt(std::pow(initPos.X(), 2) + std::pow(initPos.Y(), 2));
     TVector3 intersectionPoint;
     Double_t offset;
     Double_t xCross;
@@ -388,11 +388,11 @@ ClassImp(RAT::LightPathCalculator)
     // cylinder height. rho(t) = sqrt((rho_0x^2 + v_0x^2 * t)^2 + (rho_0y^2 + v_0y^2 * t)^2) = fIVCylRadius This becomes
     // a quadratic equation in t, with the following coefficients
 
-    Double_t aCoeff = pow(initDir.X(), 2) + pow(initDir.Y(), 2);
+    Double_t aCoeff = std::pow(initDir.X(), 2) + std::pow(initDir.Y(), 2);
     Double_t bCoeff = 2 * (initPos.X() * initDir.X() + initPos.Y() * initDir.Y());
-    Double_t cCoeff = pow(startingRho, 2) - pow(acrylicCylRad, 2);
+    Double_t cCoeff = std::pow(startingRho, 2) - std::pow(acrylicCylRad, 2);
 
-    Double_t tCross = (-1 * bCoeff + TMath::Sqrt(pow(bCoeff, 2) - 4 * aCoeff * cCoeff)) / (2 * aCoeff);
+    Double_t tCross = (-1 * bCoeff + TMath::Sqrt(std::pow(bCoeff, 2) - 4 * aCoeff * cCoeff)) / (2 * aCoeff);
     zCross = initPos.Z() + (initDir.Z() * tCross);
     // Checking z crossing height
     if (TMath::Abs(zCross) <= fIVCylHeight) {
@@ -424,11 +424,11 @@ ClassImp(RAT::LightPathCalculator)
 
     // Now, we repeat the process, but looking for the moment when the path crosses the spherical cap
     Double_t startingR = modStartPos.Mag();
-    aCoeff = pow(initDir.X(), 2) + pow(initDir.Y(), 2) + pow(initDir.Z(), 2);
+    aCoeff = std::pow(initDir.X(), 2) + std::pow(initDir.Y(), 2) + std::pow(initDir.Z(), 2);
     bCoeff = 2 * (modStartPos.X() * initDir.X() + modStartPos.Y() * initDir.Y() + modStartPos.Z() * initDir.Z());
-    cCoeff = pow(startingR, 2) - pow(acrylicCapRad, 2);
+    cCoeff = std::pow(startingR, 2) - std::pow(acrylicCapRad, 2);
 
-    tCross = (-1 * bCoeff + TMath::Sqrt(pow(bCoeff, 2) - 4 * aCoeff * cCoeff)) / (2 * aCoeff);
+    tCross = (-1 * bCoeff + TMath::Sqrt(std::pow(bCoeff, 2) - 4 * aCoeff * cCoeff)) / (2 * aCoeff);
     xCross = modStartPos.X() + (initDir.X() * tCross);
     yCross = modStartPos.Y() + (initDir.Y() * tCross);
     zCross = modStartPos.Z() + (initDir.Z() * tCross);
@@ -452,9 +452,9 @@ ClassImp(RAT::LightPathCalculator)
     TVector3 normVec = GetNormalVector(incidentPoint);
 
     const Double_t ratioRI = incRIndex / refRIndex;
-    const Double_t cosTheta1 = normVec.Dot(-1.0 * incidentVec);  // Incident angle [Snell's Law]
+    const Double_t cosTheta1 = (-1.0 * normVec).Dot(incidentVec);  // Incident angle [Snell's Law]
     const Double_t cosTheta2 =
-        TMath::Sqrt(1 - TMath::Power(ratioRI, 2) * (1 - TMath::Power(cosTheta1, 2)));  // Refracted Angle [Snell's Law]
+        TMath::Sqrt(1 - std::pow(ratioRI, 2) * (1 - std::pow(cosTheta1, 2)));  // Refracted Angle [Snell's Law]
 
     // Initialise the refracted photon vector
     TVector3 refractedVec(0.0, 0.0, 0.0);
@@ -488,7 +488,7 @@ ClassImp(RAT::LightPathCalculator)
                to_string(point.X()) + ", " + to_string(point.Y()) + ", " + to_string(point.Z()) + ")");
     }
 
-    double cylRad = TMath::Sqrt(pow(point.X(), 2) + pow(point.Y(), 2));
+    double cylRad = TMath::Sqrt(std::pow(point.X(), 2) + std::pow(point.Y(), 2));
     double sphereRad = point.Mag();
     double height = point.Z();
     TVector3 normalVector;
