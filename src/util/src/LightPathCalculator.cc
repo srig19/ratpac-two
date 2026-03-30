@@ -6,6 +6,8 @@ ClassImp(RAT::LightPathCalculator)
   // Constructor where user assigns the material for each region. Refractive indices are pulled from optics tables
   LightPathCalculator::LightPathCalculator(std::string materialIV, std::string materialAcrylic,
                                            std::string materialOV) {
+    fUseOpticsTables = true;
+
     DBLinkPtr opticsIV;
     std::string optionIV;
     std::vector<double> valOneIV;
@@ -95,6 +97,8 @@ ClassImp(RAT::LightPathCalculator)
 
   // Constructor where user chooses a single refractive index for each material
   LightPathCalculator::LightPathCalculator(Double_t refIV, Double_t refAcrylic, Double_t refOV) {
+    fUseOpticsTables = false;
+
     fIVRefIndex = refIV;
     fAcrylicRefIndex = refAcrylic;
     fOVRefIndex = refOV;
@@ -106,14 +110,14 @@ ClassImp(RAT::LightPathCalculator)
   void LightPathCalculator::SetValues() {
     // Setting geometry specific values
     DBLinkPtr geoPtr = DB::Get()->GetLink("GEO", "eos_vessel");
-    Double_t fIVCylRadius = geoPtr->GetD("r_max");
-    Double_t fIVCylHeight = geoPtr->GetD("size_z");  // This is HALF the height
-    Double_t fIVCapRadius = geoPtr->GetD("top_radius") Double_t fIVCapHeight = geoPtr->GetD("top_height");
-    Double_t fAcrylicThickness = 25.4;  // Acrylic is 1 inch thick
-    Double_t fBarrelPMTRadius = 1049.6;
-    Double_t fBarrelPMTHeight = 658.8;  // This is HALF the height
-    Double_t fTopPMTRadius = -10.0;
-    Double_t fBotPMTRadius = -10.0;
+    fIVCylRadius = geoPtr->GetD("r_max");
+    fIVCylHeight = geoPtr->GetD("size_z");  // This is HALF the height
+    fIVCapRadius = geoPtr->GetD("top_radius") Double_t fIVCapOffset = TMath::Abs(fIVCapRadius - fIVCylHeight);
+    fAcrylicThickness = 25.4;  // Acrylic is 1 inch thick
+    fBarrelPMTRadius = 1049.6;
+    fBarrelPMTHeight = 658.8;  // This is HALF the height
+    fTopPMTRadius = 1070.0;
+    fBotPMTRadius = 1070.0;
   }
 
   void LightPathCalculator::ResetValues() {
@@ -175,16 +179,15 @@ ClassImp(RAT::LightPathCalculator)
     fStartPos = eventPos;
     fEndPos = pmtPos;
     fPathPrecision = precision;
-
     // Determine the starting region
-    std::string startRegion = GetRegion(eventPos);
-    if (startRegion == "IV")
-      fLightPathType
+    fStartingRegion = GetRegion(eventPos);
 
-          // Calculate the refractive indices for the given wavlength
-          fIVRefIndex = InterpolateTGraph(fIVRefIndexGraph, wavelength);
-    fAcrylicRefIndex = InterpolateTGraph(fAcrylicRefIndexGraph, wavelength);
-    fOVRefIndex = InterpolateTGraph(fOVRefIndexGraph, wavelength);
+    if (fUseOpticsTables) {
+      // Calculate the refractive indices for the given wavlength
+      fIVRefIndex = InterpolateTGraph(fIVRefIndexGraph, wavelength);
+      fAcrylicRefIndex = InterpolateTGraph(fAcrylicRefIndexGraph, wavelength);
+      fOVRefIndex = InterpolateTGraph(fOVRefIndexGraph, wavelength);
+    }  // Otherwise, stick with the user-loaded values
 
     // Check the refractive indices are set properly
     if (std::isnan(fIVRefIndex * fAcrylicRefIndex * fOVRefIndex) ||
@@ -198,7 +201,7 @@ ClassImp(RAT::LightPathCalculator)
       // Set the straight line path boolean (true)
       fStraightLine = true;
       // Path calculation without any refraction
-      CalculateStraightPath((fEndPos - fStartPos).Unit());
+      PathCalculation((fEndPos - fStartPos).Unit());
       return;
     } else {
       // Explicitly set straight line path flag to false and continue with calculation with refraction
@@ -226,7 +229,10 @@ ClassImp(RAT::LightPathCalculator)
     }
     // ...or in the OV region outside.
     else if (startRegion == "OV") {
-      pathResult = CalculateDistancesOV(fStartPos, fEndPos);
+      Log::Die(
+          "LightPathCalculator::CalcByPosition: Start Position is in the OV. LPC does not have this functionality "
+          "yet.");
+      // pathResult = CalculateDistancesOV(fStartPos, fEndPos);
     } else if (startRegion == "Past PMT") {
       pathResult = false;
       Log::Die("LightPathCalculator::CalcByPosition: Event Position is beyond the PMT volume");
@@ -255,8 +261,8 @@ ClassImp(RAT::LightPathCalculator)
 
   Bool_t CalculateDistancesIV(const TVector3& eventPos, const TVector3& pmtPos) {
     LightPathType = IAO;  // IV->Acrylic->OV->PMT
-    fStartPos = startPos;
-    fEndPos = endPos;
+    fStartPos = eventPos;
+    fEndPos = pmtPos;
 
     // xUnit - Points along the radial direction from the
     //         origin to the start position.
@@ -291,31 +297,228 @@ ClassImp(RAT::LightPathCalculator)
     fIsTIR = false;
   }
 
-  Bool_t CalculateDistancesOV(const TVector3& eventPos, const TVector3& pmtPos) {}
+  Bool_t CalculateDistancesOV(const TVector3& eventPos, const TVector3& pmtPos) {
+    return false;
+  }  // Placeholder function
 
-  void CalculateStraightPath(const TVector3& eventPos, const TVector3& pmtPos) {
-    fInitialLightVec = (pmtPos - eventPos).Unit();
+  void PathCalculation(const TVector3& initDir) {
+    fInitialLightVec = initDir.Unit();
+
+    if (fStartingRegion == "IV") {
+      // Set Light Path Type IV->Acrylic->OV->PMT
+      fLightPathType = IAO;
+
+      // Find the point where the light path intersects the inner edge of the acrylic from the IV.
+      fPointOnAcrylic1st = IntersectAcrylic(fStartPos, fInitialLightVec, false);
+
+      // Determine the refracted vector after refraction with the inner edge of the acrylic.
+      TVector vecOne = PathRefraction(fInitialLightVec.Unit(), )
+
+    } else if (fStartingRegion == "Acrylic") {
+      Log::Die("LightPathCalculator::PathCalculation: This functionality is not yet available.");
+    } else if (fStartingRegion == "OV") {
+      Log::Die("LightPathCalculator::PathCalculation: This functionality is not yet available.");
+    } else if (fStartingRegion == "Past PMT") {
+      Log::Die("LightPathCalculator::PathCalculation: Starting position is beyond the PMTs.");
+    } else {
+      Log::Die("LightPathCalculator::PathCalculation: Impossible conditional block occured with start region " +
+               fStartingRegion);
+    }
   }
 
-  TVector3 GetNormalVector(const TVector3& point) {
-    // Check that the point is either within the IV or the acrylic
-    if (GetRegion(point) == "OV" || GetRegion(point) == "Past PMT") {
-      Log::Die("LightPathCalculator::GetNormalVector: Provided point is outside of the acrylic. Point is (" +
+  Double_t LightPathCalculator::ThetaResidual(const Double_t theta) {
+    // Compute the difference between the PMT's fPMTTargetTheta
+    // and ThetaX( theta ) for the current estimate of starting angle
+    // from the source theta.
+    // Here thetaX( theta ) is the final angle in the path type
+    // e.g. for IV -> Acrylic -> OV; ThetaX = Theta3
+    // e.g. for OV -> Acrylic -> IV -> Acrylic -> OV; ThetaX = Theta5
+
+    Double_t retValue = 0.0;
+    if (fLightPathType == IAO) {
+      retValue = fPMTTargetTheta - (Theta3rd(theta) + Theta2nd(theta) + Theta1st(theta));
+    } else if (fLightPathType == OAIAO) {
+      // SHOULD NOT REACH HERE YET
+      retValue =
+          fPMTTargetTheta - (Theta5th(theta) + Theta4th(theta) + Theta3rd(theta) + Theta2nd(theta) + Theta1st(theta));
+    } else {  // Shouldn't reach here, but handle just in case and return the light path type
+      Log::Die("LightPathCalculator::ThetaResidual: Error! Unknown light path encountered with light path type: " +
+               fLightPathTypeMap[fLightPathType])
+    }
+    return retValue;
+  }
+
+  Double_t LightPathCalculator::DThetaResidual(const Double_t theta) {
+    // Compute the derivative in the difference between ... (see above)
+    Double_t retDValue = 0.0;
+
+    if (fLightPathType == IAO) {
+      retDValue = (-1.0 * (DTheta3rd(theta) + DTheta2nd(theta) + DTheta1st(theta)));
+    } else if (fLightPathType == OAIAO) {
+      retDValue =
+          (-1.0 * (DTheta5th(theta) + DTheta4th(theta) + DTheta3rd(theta) + DTheta2nd(theta) + DTheta1st(theta)));
+
+    } else {  // Shouldn't reach here, but handle just in case and return the light path type
+      Log::Die("LightPathCalculator::ThetaDResidual: Error! Unknown light path encountered with light path type: " +
+               fLightPathTypeMap[fLightPathType])
+    }
+    return retDValue;
+  }
+
+  TVector3 LightPathCalculator::IntersectAcrylic(const TVector3& initPos, const TVector3& initDir,
+                                                 const bool& outerEdge) {
+    Double_t startingRho = TMath::Sqrt(pow(initPos.X(), 2) + pow(initPos.Y(), 2));
+    TVector3 intersectionPoint;
+    Double_t offset;
+    Double_t xCross;
+    Double_t yCross;
+    Double_t zCross;
+    Double_t acrylicCylRad = fIVCylRadius;
+    Double_t acrylicCapRad = fIVCapRadius;
+
+    if (outerEdge) {
+      // If true, then we are trying to find the intersection with the outer edge of the AV. So adjust the radii by the
+      // acrylic thickness
+      acrylicCylRad += fAcrylicThickness;
+      acrylicCapRad += fAcrylicThickness;
+    }
+
+    // The path as a function of time is described as fStartPos + fInitialLightVec * t
+    // First, we check if the cylindrical radius, rho(t), crosses the acrylic when the height is below the acrylic
+    // cylinder height. rho(t) = sqrt((rho_0x^2 + v_0x^2 * t)^2 + (rho_0y^2 + v_0y^2 * t)^2) = fIVCylRadius This becomes
+    // a quadratic equation in t, with the following coefficients
+
+    Double_t aCoeff = pow(initDir.X(), 2) + pow(initDir.Y(), 2);
+    Double_t bCoeff = 2 * (initPos.X() * initDir.X() + initPos.Y() * initDir.Y());
+    Double_t cCoeff = pow(startingRho, 2) - pow(acrylicCylRad, 2);
+
+    Double_t tCross = (-1 * bCoeff + TMath::Sqrt(pow(bCoeff, 2) - 4 * aCoeff * cCoeff)) / (2 * aCoeff);
+    zCross = initPos.Z() + (initDir.Z() * tCross);
+    // Checking z crossing height
+    if (TMath::Abs(zCross) <= fIVCylHeight) {
+      // The crossing hieght is within the cylinder part of the acrylic. This makes life a lot easier.
+      xCross = initPos.X() + (initDir.X() * tCross);
+      yCross = initPos.Y() + (initDir.Y() * tCross);
+      intersectionPoint.SetXYZ(xCross, yCross, zCross);
+      return intersectionPoint;
+    }
+    // Otherwise, the crossing will occur at one of the spherical caps. Redo this calculation with the spherical radius
+    // instead, but need to shift the zero of the coordinate system to be the center of the cylinder
+    else if (zCross > fIVCylHeight) {
+      // Crossing top cap
+      offset = fIVCapOffset;
+    } else if (zCross < fIVCylHeight) {
+      // Crossing bot cap
+      offset = -1 * fIVCapOffset;
+    } else {
+      // This should NOT be reached, but have a check anyway. If a path is horizontal and starts within the cylinder, it
+      // should end within the cylinder, meaning the first conditional is satisfied.
+      Log::Die("LightPathCalculator::IVToInnerEdge: Reached impossible conditional block. Start Position is (" +
+               fStartPos.X() + ", " + fStartPos.Y() + ", " + fStartPos.Z() + "), and initial direction is (" +
+               fInitialLightVec.X() + ", " + fInitialLightVec.Y() + ", " + fInitialLightVec.Z());
+    }
+
+    TVector3 modStartPos;
+    modStartPos.SetXYZ(initPos.X(), initPos.Y(),
+                       initPos.Z() + offset);  // Moving the z position to match the new relevant origin
+
+    // Now, we repeat the process, but looking for the moment when the path crosses the spherical cap
+    Double_t startingR = modStartPos.Mag();
+    aCoeff = pow(initDir.X(), 2) + pow(initDir.Y(), 2) + pow(initDir.Z(), 2);
+    bCoeff = 2 * (modStartPos.X() * initDir.X() + modStartPos.Y() * initDir.Y() + modStartPos.Z() * initDir.Z());
+    cCoeff = pow(startingR, 2) - pow(acrylicCapRad, 2);
+
+    tCross = (-1 * bCoeff + TMath::Sqrt(pow(bCoeff, 2) - 4 * aCoeff * cCoeff)) / (2 * aCoeff);
+    xCross = modStartPos.X() + (initDir.X() * tCross);
+    yCross = modStartPos.Y() + (initDir.Y() * tCross);
+    zCross = modStartPos.Z() + (initDir.Z() * tCross);
+
+    intersectionPoint.SetXYZ(xCross, yCross, zCross - offset);  // Undoing the offset from shifting the center
+    return intersectionPoint;
+  }
+
+  void LightPathCalculator::FuncD(Double_t theta, Double_t & funcVal, Double_t & dFuncVal) {
+    funcVal = ThetaResidual(theta);
+    dFuncVal = DThetaResidual(theta);
+  }
+
+  TVector3 LightPathCalculator::PathRefraction(const TVector3& incidentVec, const TVector3& incidentPoint,
+                                               const Double_t incRIndex, const Double_t refRIndex) {
+    if (fStraightLine)
+      // No need to calculate refraction
+      return incidentVec;
+
+    // Find the normal vector at the provided intersection point
+    TVector3 normVec = GetNormalVector(incidentPoint);
+
+    const Double_t ratioRI = incRIndex / refRIndex;
+    const Double_t cosTheta1 = normVec.Dot(-1.0 * incidentVec);  // Incident angle [Snell's Law]
+    const Double_t cosTheta2 =
+        TMath::Sqrt(1 - TMath::Power(ratioRI, 2) * (1 - TMath::Power(cosTheta1, 2)));  // Refracted Angle [Snell's Law]
+
+    // Initialise the refracted photon vector
+    TVector3 refractedVec(0.0, 0.0, 0.0);
+
+    // Check for Total Internal Reflection (TIR) (equivalent to a 'nan' radicand i.e. a negative squareroot)
+    if (std::isnan(cosTheta2)) {
+      fIsTIR = true;
+      // Set the refracted vec to the straight equivalent
+      refractedVec = incidentVec;
+    }
+
+    // Define the refracted vector
+    else if (cosTheta1 >= 0.0) {
+      refractedVec = (ratioRI * incidentVec) + ((ratioRI * cosTheta1) - cosTheta2) * incidentSurfVec;
+    }
+
+    else {
+      refractedVec = (ratioRI * incidentVec) - ((ratioRI * cosTheta1) - cosTheta2) * normVec;
+    }
+
+    // Ensure the refracted vector is unit normalised
+    return refractedVec.Unit();
+  }
+
+  TVector3 GetNormalVector(const TVector3& point, double tolerance) {
+    // GetNormalVector should only be called using points that are on the acrylic or very close to the acrylic.
+
+    // Check that the point is not beyond the PMTs before proceeding
+    if (GetRegion(point) == "Past PMT") {
+      Log::Die("LightPathCalculator::GetNormalVector: Provided point is beyond the PMT region. Point is (" +
                to_string(point.X()) + ", " + to_string(point.Y()) + ", " + to_string(point.Z()) + ")");
     }
 
+    double cylRad = TMath::Sqrt(pow(point.X(), 2) + pow(point.Y(), 2));
+    double sphereRad = point.Mag();
+    double height = point.Z();
     TVector3 normalVector;
-    if (TMath::Abs(point.Z()) < fBarrelPMTHeight) {
-      normalVector.SetXYZ(point.X(), point.Y(), 0.0);
-      normalVector = normalVector.Unit();
+
+    // The difference between intersection with the inner and outer edges only matter for this tolerance check.
+    // Because the Eos vesssel is cylindrical and spherical the normal vectors will be equal on the inner and outer
+    // edges.
+    if ((TMath::Abs(cylRad - fIVCylRadius) <= tolerance) ||
+        (TMath::Abs(cylRad - (fIVCylRadius + fAcrylicThickness)) <=
+         tolerance)) {  // Checks to see if point is on or close to the inner or outer edge of the acrylic
+      if (TMath::Abs(height) <= fIVCylHeight) {
+        normalVector.SetXYZ(point.X(), point.Y(), 0.0);
+        normalVector = normalVector.Unit();
+      } else if (height > 0) {
+        normalVector.SetXYZ(point.X(), point.Y(), point.Z() + fIVCapOffset);
+        normalVector = normalVector.Unit();
+      } else if (height < 0) {
+        normalVector.SetXYZ(point.X(), point.Y(), point.Z() - fIVCapOffset);
+        normalVector = normalVector.Unit();
+      } else {
+        Log::Die("LightPathCalculator::GetNormalVector: Impossible conditional block reached. Point is (" +
+                 to_string(point.X()) + ", " + to_string(point.Y()) + ", " + to_string(point.Z()) + ")");
+      }
     } else {
-      normalVector = point;
-      normalVector = normalVector.Unit();
+      Log::Die("LightPathCalculator::GetNormalVector: Provided point is too far from either acrylic edge.");
     }
     return normalVector;
   }
 
-  std::string GetRegion(const TVector3& point) {
+  std::string DetermineRegion(const TVector3& point) {
     double cylRad = TMath::Sqrt(point.X() * *2 + point.Y() * *2);
     double sphereRad = point.Mag();
     double height = point.Z();
@@ -393,8 +596,3 @@ ClassImp(RAT::LightPathCalculator)
   }
 
 }  // namespace RAT
-
-/*std::vector<double>::iterator idxIt = std::lower_bound(valOne.begin(), valOne.end(), wl);
-idx = std::distance(valOne.begin(), idxIt);
-// Linear interpolation
-refIdxs[i] = (wl - valOne[idx]) / (valOne[idx+1] - valOne[idx]) * (valTwo[idx+1] - valTwo[idx]) + valTwo[idx];*/
