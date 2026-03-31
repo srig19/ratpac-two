@@ -82,14 +82,11 @@ class LightPathCalculator {
   /// @param[in] refRIndex The refractive index of the refractive media
   ///
   /// @return The refracted unit vector. Same as incidentVec if (fStraightLine) is true.
-  TVector3 PathRefraction(const TVector3& incidentVec, const TVector3& incidentPoint, const Double_t& incRIndex,
-                          const Double_t& refRIndex);
+  TVector3 PathRefraction(const TVector3& incidentVec, const TVector3& incidentPoint, const Double_t incRIndex,
+                          const Double_t refRIndex);
 
-  /// Calculate the refracted path. This is called when a RTSafe fails or
-  /// if a straight line is requested by the user from the beginning.
-  /// If (fStraightLine) is true, this performs no refractions.
-  /// @param[in] initDir The initial unit vector pointing from the starting position for the light path direction
-  void PathCalculation(const TVector3& initDir);
+  /// Calculate the refracted path. If (fStraightLine) is true, this performs no refractions.
+  void PathCalculation();
 
   /// Calculate the point where the light path, specified by the parameters, intersects either the inner or outer edge
   /// of the acrylic. This is robust, can be used for either IV->Inner Edge, Inner Edge->Outer Edge, or Outer Edge->PMT
