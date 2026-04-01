@@ -44,9 +44,10 @@ class LightPathCalculator {
   /// Constructor enforcing exact refractive indices rather than pulling from ratDB table
   LightPathCalculator(Double_t refIV, Double_t refAcrylic, Double_t refOV);
 
-  /// Part of constructor that is the same for both constructors
-  void SetValues();
+  /// Part of constructor that is the same for both constructors. Eos geometry related variables
+  void SetGeoValues();
 
+  // Resets the variables that are calculated and filled during "CalcByPosition"
   void ResetValues();
 
   /// Main analysis loop. This calculates the distances in each material and the angle at each
@@ -258,7 +259,7 @@ class LightPathCalculator {
   std::string fStartingRegion;  // The region of the starting position.
 
   Bool_t fIsTIR;         // TRUE: Total Internal Reflection encountered FALSE: It wasn't
-  Bool_t fResvHit;       // TRUE: Difficult path to resolve and calculate FALSE: It wasn't
+  Bool_t fWithinError;   // TRUE: Difficult path to resolve and calculate FALSE: It wasn't
   Bool_t fStraightLine;  // TRUE: Light Path is a straight line approximation FALSE: It isn't
 
   /// Refraction points
@@ -273,7 +274,7 @@ class LightPathCalculator {
   Double_t fDistInAcrylic;  // Distance in the acrylic
   Double_t fDistInOV;       // Distance in the OV
 
-  Double_t fEnergy;  // The value of the wavelength in MeV
+  Double_t fWavelength;  // The value of the wavelength in MeV
 
   Double_t fSolidAngle;   // The solid angle subtended by the PMT for this light path
   Double_t fCosThetaAvg;  // Average incident angle on the PMT for this path, only calculated after a call to
@@ -282,8 +283,6 @@ class LightPathCalculator {
   Double_t fFresnelTCoeff;  // The combined Fresnel TRANSMISSION coefficient for this path
   Double_t fFresnelRCoeff;  // The combined Fresnel REFLECTIVITY coefficient for this path
 
-  Double_t fLoopCeiling;    // Iteration Ceiling for algortithm loop
-  Double_t fFinalLoopSize;  // Final loop value which meets locality conditions
   Double_t fPathPrecision;  // The accepted path proximity/tolerance to the PMT location [mm]
 };
 }  // namespace RAT

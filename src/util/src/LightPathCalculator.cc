@@ -29,7 +29,8 @@ ClassImp(RAT::LightPathCalculator)
       valOneIV = opticsIV->GetDArray("RINDEX_value1");
       valTwoIV = opticsIV->GetDArray("RINDEX_value2");
     } catch (DBNotFoundError& e) {
-      Log::Die("LightPathCalculator: Failed to retrieve optics information for IV: " + materialIV);
+      std::cout << "LightPathCalculator: Failed to retrieve optics information for IV: " << materialIV << std::endl;
+      return;
     }
     try {
       opticsAcrylic = DB::Get()->GetLink("OPTICS", materialAcrylic);
@@ -37,7 +38,9 @@ ClassImp(RAT::LightPathCalculator)
       valOneAcrylic = opticsAcrylic->GetDArray("RINDEX_value1");
       valTwoAcrylic = opticsAcrylic->GetDArray("RINDEX_value2");
     } catch (DBNotFoundError& e) {
-      Log::Die("LightPathCalculator: Failed to retrieve optics information for Acrylic: " + materialAcrylic);
+      std::cout << "LightPathCalculator: Failed to retrieve optics information for Acrylic: " << materialAcrylic
+                << std::endl;
+      return;
     }
     try {
       opticsOV = DB::Get()->GetLink("OPTICS", materialOV);
@@ -45,7 +48,8 @@ ClassImp(RAT::LightPathCalculator)
       valOneOV = opticsOV->GetDArray("RINDEX_value1");
       valTwoOV = opticsOV->GetDArray("RINDEX_value2");
     } catch (DBNotFoundError& e) {
-      Log::Die("LightPathCalculator: Failed to retrieve optics information for OV: " + materialOV);
+      "LightPathCalculator: Failed to retrieve optics information for OV: " << materialOV << std::endl;
+      return;
     }
 
     const double hbarc = 197.32705e-6;  // conversion from energy in MeV to nm
@@ -68,7 +72,8 @@ ClassImp(RAT::LightPathCalculator)
       }
 
       if (valOne.size() != valTwo.size()) {
-        Log::Die("LightPathCalculator: Optics bable vectors are not the same size.");
+        std::cout << "LightPathCalculator: Optics table vectors are not the same size." << std::endl;
+        return;
       }
 
       int pointNum = 0;
@@ -159,21 +164,26 @@ ClassImp(RAT::LightPathCalculator)
     // Check if refractive indices tables were properly loaded
     if ((fIVRefIndexGraph.GetN() * fAcrylicRefIndexGraph.GetN() * fOVRefIndexGraph.GetN() == 0) &&
         (fIVRefIndex * fAcrylicRefIndex * fOVRefIndex == 0)) {
-      Log::Die(
-          "LPC::CalcByPosition: One or more refractive indices were not properly assigned. Check if constructor was "
-          "called before CalcByPosition");
+      std::cout << "LPC::CalcByPosition: One or more refractive indices were not properly assigned. Check if "
+                   "constructor was called before CalcByPosition"
+                << std::endl;
+      return;
     }
 
     // Check that none of the start or end positions are 'nan or 'inf'
     Double_t startPosMag = eventPos.Mag();
     if (std::isnan(startPosMag) || std::isinf(startPosMag)) {
-      Log::Die(
-          "LightPathCalculator::CalcByPosition: The start position is nan/inf, ensure you use a valid start position!");
+      std::cout << "LightPathCalculator::CalcByPosition: The start position is nan/inf, ensure you use a valid start "
+                   "position!"
+                << std::endl;
+      return;
     }
     Double_t endPosMag = pmtPos.Mag();
     if (std::isnan(endPosMag) || std::isinf(endPosMag)) {
-      Log::Die(
-          "LightPathCalculator::CalcByPosition: The end position is nan/inf, ensure you use a valid end position!");
+      std::cout
+          << "LightPathCalculator::CalcByPosition: The end position is nan/inf, ensure you use a valid end position!"
+          << std::endl;
+      return;
     }
 
     // Set the start and end position requirements of the path, and tolerance
@@ -181,6 +191,8 @@ ClassImp(RAT::LightPathCalculator)
     fEndPos = pmtPos;
     fPathPrecision = precision;
     fInitialLightVec = (fStartPos - fEndPos).Unit();
+    fWavelength = wavelength;
+
     // Determine the starting region
     fStartingRegion = DetermineRegion(eventPos);
 
@@ -195,7 +207,8 @@ ClassImp(RAT::LightPathCalculator)
     if (std::isnan(fIVRefIndex * fAcrylicRefIndex * fOVRefIndex) ||
         std::isinf(fIVRefIndex * fAcrylicRefIndex * fOVRefIndex) ||
         (fIVRefIndex * fAcrylicRefIndex * fOVRefIndex == 0)) {
-      Log::Die("LightPathCalculator:: Refractive indices are not set properly");
+      std::cout << "LightPathCalculator:: Refractive indices are not set properly" << std::endl;
+      return;
     }
 
     // Check to see if the straight line approximation is required
@@ -210,15 +223,14 @@ ClassImp(RAT::LightPathCalculator)
       fStraightLine = false;
     }
 
-    // If the start position magnitude is 0.0, then set it to something very small so that all the vector algebra works
-    if (startPosMag == 0.0) {
-      fStartPos.SetXYZ(1.0e-4, 0.0, 0.0);
+    /*// If the start position magnitude is 0.0, then set it to something very small so that all the vector algebra
+    works if (startPosMag == 0.0) { fStartPos.SetXYZ(1.0e-4, 0.0, 0.0);
     }
     if (endPosMag == 0.0) {
       fEndPos.SetXYZ(1.0e-4, 0.0, 0.0);
-    }
+    }*/
 
-    // The path result, whether it was calculated successfully (true) or it failed (false)
+    // The path result, whether it was calculated successfully, within error and no TIR, (true) or it failed (false)
     Bool_t pathResult = false;
 
     // Check to see if the starting position is in the IV region...
@@ -227,20 +239,63 @@ ClassImp(RAT::LightPathCalculator)
     }
     // ...or inside the acrylic (rare cases - return a straight line)...
     else if (fStartingRegion == "Acrylic") {
+      std::cout << "LightPathCalculator::CalcByPosition: Start Position is in the Acrylic. LPC does not have this "
+                   "functionality "
+                   "yet."
+                << std::endl;
       pathResult = false;
+      return;
     }
     // ...or in the OV region outside.
     else if (fStartingRegion == "OV") {
-      Log::Die(
-          "LightPathCalculator::CalcByPosition: Start Position is in the OV. LPC does not have this functionality "
-          "yet.");
-      // pathResult = CalculateDistancesOV(fStartPos, fEndPos);
+      std::cout
+          << "LightPathCalculator::CalcByPosition: Start Position is in the OV. LPC does not have this functionality "
+             "yet."
+          << std::endl;
+      pathResult = false;
+      return;
     } else if (fStartingRegion == "Past PMT") {
       pathResult = false;
-      Log::Die("LightPathCalculator::CalcByPosition: Event Position is beyond the PMT volume");
+      std::cout << "LightPathCalculator::CalcByPosition: Event Position is beyond the PMT volume" << std::endl;
+      return;
     } else {
-      Log::Die("LightPathCalculator::CalcByPosition: Impossible start region occurred: " + fStartingRegion);
+      pathResult = false;
+      std::cout << "LightPathCalculator::CalcByPosition: Impossible start region occurred: " << fStartingRegion
+                << std::endl;
+      return;
     }
+    if (!pathResult) {
+      // Check to see if bad path result is due to TIR
+      if (!fIsTir) continue;  // If not, it's because the error was greater than the user-specified precision. Bummer :(
+
+      // If it is due to TIR, calculate the path without assuming refraction
+      fStraightLine = true;
+      if (fStartingRegion == "IV") {
+        pathResult = CalculateDistancesIV(fStartPos, fEndPos);
+      } else if (fStartingRegion == "Acrylic") {
+        std::cout << "LightPathCalculator::CalcByPosition: Start Position is in the Acrylic. LPC does not have this "
+                     "functionality "
+                     "yet."
+                  << std::endl;
+        return;
+      } else if (fStartingRegion == "OV") {
+        std::cout
+            << "LightPathCalculator::CalcByPosition: Start Position is in the OV. LPC does not have this functionality "
+               "yet."
+            << std::endl;
+        return;
+        // pathResult = CalculateDistancesOV(fStartPos, fEndPos);
+      } else if (fStartingRegion == "Past PMT") {
+        std::cout << "LightPathCalculator::CalcByPosition: Event Position is beyond the PMT volume" << std::endl;
+        return;
+      } else {
+        std::cout << "LightPathCalculator::CalcByPosition: Impossible start region occurred: " << fStartingRegion
+                  << std::endl;
+        return;
+      }
+      // If not, it's because the error was greater than the user-specified precision. Bummer :(
+    }
+    return;
   }
 
   Bool_t LightPathCalculator::CalculateDistancesIV(const TVector3& eventPos, const TVector3& pmtPos) {
@@ -251,10 +306,10 @@ ClassImp(RAT::LightPathCalculator)
 
     PathCalculation();
 
-    if (!fIsTIR)
-      return true;
-    else
+    if (fIsTIR || fWithinError)
       return false;
+    else
+      return true;
   }
 
   Bool_t LightPathCalculator::CalculateDistancesOV(const TVector3& eventPos, const TVector3& pmtPos) {
@@ -285,15 +340,25 @@ ClassImp(RAT::LightPathCalculator)
       // Difference between the fPointOnAcrylic2nd and calcPointOnAcrylic2nd is the ERROR
       fLightPathEndPos = fEndPos + (fPointOnAcrylic2nd - calcPointOnAcrylic2nd);
 
+      // Check if the error is within the user-requested precision. If not, set the path result to be false.
+      if ((fPointOnAcrylic2nd - calcPointOnAcrylic2nd).Mag() < fPathPrecision)
+        fWithinError = true;
+      else
+        fWithinError = false;
+
     } else if (fStartingRegion == "Acrylic") {
-      Log::Die("LightPathCalculator::PathCalculation: This functionality is not yet available.");
+      std::cout << "LightPathCalculator::PathCalculation: This functionality is not yet available." << std::endl;
+      return;
     } else if (fStartingRegion == "OV") {
-      Log::Die("LightPathCalculator::PathCalculation: This functionality is not yet available.");
+      std::cout << "LightPathCalculator::PathCalculation: This functionality is not yet available." << std::endl;
+      return;
     } else if (fStartingRegion == "Past PMT") {
-      Log::Die("LightPathCalculator::PathCalculation: Starting position is beyond the PMTs.");
+      std::cout << "LightPathCalculator::PathCalculation: Starting position is beyond the PMTs." << std::endl;
+      return;
     } else {
-      Log::Die("LightPathCalculator::PathCalculation: Impossible conditional block occured with start region " +
-               fStartingRegion);
+      std::cout << "LightPathCalculator::PathCalculation: Impossible conditional block occured with start region "
+                << fStartingRegion << std::endl;
+      return;
     }
   }
 
@@ -345,10 +410,10 @@ ClassImp(RAT::LightPathCalculator)
     } else {
       // This should NOT be reached, but have a check anyway. If a path is horizontal and starts within the cylinder, it
       // should end within the cylinder, meaning the first conditional is satisfied.
-      Log::Die("LightPathCalculator::IVToInnerEdge: Reached impossible conditional block. Start Position is (" +
-               to_string(fStartPos.X()) + ", " + to_string(fStartPos.Y()) + ", " + to_string(fStartPos.Z()) +
-               "), and initial direction is (" + to_string(fInitialLightVec.X()) + ", " +
-               to_string(fInitialLightVec.Y()) + ", " + to_string(fInitialLightVec.Z()));
+      std::cout << "LightPathCalculator::IVToInnerEdge: Reached impossible conditional block. Start Position is ("
+                << fStartPos.X() << ", " << fStartPos.Y() << ", " << fStartPos.Z() << "), and initial direction is ("
+                << fInitialLightVec.X() << ", " << fInitialLightVec.Y() << ", " << fInitialLightVec.Z() << std::endl;
+      return;
     }
 
     TVector3 modStartPos;
@@ -414,8 +479,9 @@ ClassImp(RAT::LightPathCalculator)
 
     // Check that the point is not beyond the PMTs before proceeding
     if (DetermineRegion(point) == "Past PMT") {
-      Log::Die("LightPathCalculator::GetNormalVector: Provided point is beyond the PMT region. Point is (" +
-               to_string(point.X()) + ", " + to_string(point.Y()) + ", " + to_string(point.Z()) + ")");
+      std::cout << "LightPathCalculator::GetNormalVector: Provided point is beyond the PMT region. Point is ("
+                << point.X() << ", " << point.Y() << ", " << point.Z() << ")" << std::endl;
+      return;
     }
 
     double cylRad = TMath::Sqrt(std::pow(point.X(), 2) + std::pow(point.Y(), 2));
@@ -441,11 +507,15 @@ ClassImp(RAT::LightPathCalculator)
         normalVector.SetXYZ(point.X(), point.Y(), point.Z() - fIVCapOffset);
         normalVector = normalVector.Unit();
       } else {
-        Log::Die("LightPathCalculator::GetNormalVector: Impossible conditional block reached. Point is (" +
-                 to_string(point.X()) + ", " + to_string(point.Y()) + ", " + to_string(point.Z()) + ")");
+        std::cout << "LightPathCalculator::GetNormalVector: Impossible conditional block reached. Point is (" +
+                         point.X() + ", " + point.Y() + ", " + point.Z() + ")"
+                  << std::endl;
+        return;
       }
     } else {
-      Log::Die("LightPathCalculator::GetNormalVector: Provided point is too far from either acrylic edge.");
+      std::cout << "LightPathCalculator::GetNormalVector: Provided point is too far from either acrylic edge."
+                << std::endl;
+      return;
     }
     return normalVector;
   }
@@ -476,8 +546,9 @@ ClassImp(RAT::LightPathCalculator)
             return "Past PMT";
           }
         } else {
-          Log::Die("LightPathCalculator::GetRegion: Reached a forbidden conditional. Point is (" +
-                   to_string(point.X()) + ", " + to_string(point.Y()) + ", " + to_string(point.Z()) + ")");
+          std::cout << "LightPathCalculator::GetRegion: Reached a forbidden conditional. Point is (" << point.X()
+                    << ", " << point.Y() << ", " << point.Z() << ")" << std::endl;
+          return;
         }
       }
     } else if (cylRad < (fIVCylRadius + fAcrylicThickness)) {
@@ -497,8 +568,9 @@ ClassImp(RAT::LightPathCalculator)
             return "Past PMT";
           }
         } else {
-          Log::Die("LightPathCalculator::GetRegion: Reached a forbidden conditional. Point is (" +
-                   to_string(point.X()) + ", " + to_string(point.Y()) + ", " + to_string(point.Z()) + ")");
+          std::cout << "LightPathCalculator::GetRegion: Reached a forbidden conditional. Point is (" << point.X()
+                    << ", " << point.Y() + ", " << point.Z() << ")" << std::endl;
+          return;
         }
       }
     } else if (cylRad <= fBarrelPMTRadius) {
@@ -518,8 +590,9 @@ ClassImp(RAT::LightPathCalculator)
             return "Past PMT";
           }
         } else {
-          Log::Die("LightPathCalculator::GetRegion: Reached a forbidden conditional. Point is (" +
-                   to_string(point.X()) + ", " + to_string(point.Y()) + ", " + to_string(point.Z()) + ")");
+          std::cout << "LightPathCalculator::GetRegion: Reached a forbidden conditional. Point is (" << point.X()
+                    << ", " << point.Y() << ", " << point.Z() << ")" << std::endl;
+          return;
         }
       }
     } else {
