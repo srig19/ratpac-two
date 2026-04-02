@@ -108,123 +108,6 @@ class LightPathCalculator {
   /// @return The refractive index in the scintillator for this wavelength (energy)
   Double_t InterpolateTGraph(const TGraph& graph, const Double_t wl);
 
-  /////////////////////////////////
-  ////////     GETTERS     ////////
-  /////////////////////////////////
-
-  /// Light Path Type
-  std::string GetLightPathType() { return fLightPathTypeMap[fLightPathType]; }
-
-  /// Eos Geometry
-  Double_t GetIVCylRadius() const { return fIVCylRadius; }
-  Double_t GetIVCylHeight() const { return fIVCylHeight; }
-  Double_t GetIVCapRadius() const { return fIVCapRadius; }
-  Double_t GetAcrylicThickness() const { return fAcrylicThickness; }
-
-  /// PMT Geometry
-  Double_t GetBarrelPMTRadius() const { return fBarrelPMTRadius; }
-  Double_t GetBarrelPMTHeight() const { return fBarrelPMTHeight; }
-  Double_t GetTopPMTRadius() const { return fTopPMTRadius; }
-  Double_t GetBotPMTRadius() const { return fBotPMTRadius; }
-
-  /// Refractive Indices
-  Double_t GetIVRefIndex() const { return fIVRefIndex; }
-  Double_t GetAcrylicRefIndex() const { return fAcrylicRefIndex; }
-  Double_t GetOVRefIndex() const { return fOVRefIndex; }
-
-  /// Light Path Vectors
-  TVector3 GetIncidentVecOnPMT() const { return fIncidentVecOnPMT; }
-  TVector3 GetInitialLightVec() const { return fInitialLightVec; }
-
-  /// Positions
-  TVector3 GetStartPos() const { return fStartPos; }
-  TVector3 GetEndPos() const { return fEndPos; }
-  TVector3 GetLightPathEndPos() const { return fLightPathEndPos; }
-
-  /// Path Status Flags
-  Bool_t GetIsTIR() const { return fIsTIR; }
-  Bool_t GetResvHit() const { return fResvHit; }
-  Bool_t GetStraightLine() const { return fStraightLine; }
-
-  /// Refraction Points
-  TVector3 GetPointOnAcrylic1st() const { return fPointOnAcrylic1st; }
-  TVector3 GetPointOnAcrylic2nd() const { return fPointOnAcrylic2nd; }
-  TVector3 GetPointOnAcrylic3rd() const { return fPointOnAcrylic3rd; }
-  TVector3 GetPointOnAcrylic4th() const { return fPointOnAcrylic4th; }
-
-  /// Distances
-  Double_t GetDistInIV() const { return fDistInIV; }
-  Double_t GetDistInAcrylic() const { return fDistInAcrylic; }
-  Double_t GetDistInOV() const { return fDistInOV; }
-
-  /// Energy
-  Double_t GetEnergy() const { return fEnergy; }
-
-  /// Solid Angle & Incident Angle
-  Double_t GetSolidAngle() const { return fSolidAngle; }
-  Double_t GetCosThetaAvg() const { return fCosThetaAvg; }
-
-  /// Fresnel Coefficients
-  Double_t GetFresnelTCoeff() const { return fFresnelTCoeff; }
-  Double_t GetFresnelRCoeff() const { return fFresnelRCoeff; }
-
-  /////////////////////////////////
-  ////////     SETTERS     ////////
-  /////////////////////////////////
-
-  /// IV Geometry
-  void SetIVCylRadius(const Double_t radius) { fIVCylRadius = radius; }
-  void SetIVCylHeight(const Double_t height) { fIVCylHeight = height; }
-  void SetIVCapRadius(const Double_t radius) { fIVCapRadius = radius; }
-  void SetAcrylicThickness(const Double_t thickness) { fAcrylicThickness = thickness; }
-
-  /// PMT Geometry
-  void SetBarrelPMTRadius(const Double_t radius) { fBarrelPMTRadius = radius; }
-  void SetBarrelPMTHeight(const Double_t height) { fBarrelPMTHeight = height; }
-  void SetTopPMTRadius(const Double_t radius) { fTopPMTRadius = radius; }
-  void SetBotPMTRadius(const Double_t radius) { fBotPMTRadius = radius; }
-
-  /// Refractive Indices
-  void SetIVRefIndex(const Double_t index) { fIVRefIndex = index; }
-  void SetAcrylicRefIndex(const Double_t index) { fAcrylicRefIndex = index; }
-  void SetOVRefIndex(const Double_t index) { fOVRefIndex = index; }
-
-  /// Light Path Vectors
-  void SetIncidentVecOnPMT(const TVector3& vec) { fIncidentVecOnPMT = vec; }
-  void SetInitialLightVec(const TVector3& vec) { fInitialLightVec = vec; }
-
-  /// Positions
-  void SetStartPos(const TVector3& pos) { fStartPos = pos; }
-  void SetEndPos(const TVector3& pos) { fEndPos = pos; }
-  void SetLightPathEndPos(const TVector3& pos) { fLightPathEndPos = pos; }
-
-  /// Path Status Flags
-  void SetIsTIR(const Bool_t isTIR) { fIsTIR = isTIR; }
-  void SetResvHit(const Bool_t resvHit) { fResvHit = resvHit; }
-  void SetStraightLine(const Bool_t straightLine) { fStraightLine = straightLine; }
-
-  /// Refraction Points
-  void SetPointOnAcrylic1st(const TVector3& point) { fPointOnAcrylic1st = point; }
-  void SetPointOnAcrylic2nd(const TVector3& point) { fPointOnAcrylic2nd = point; }
-  void SetPointOnAcrylic3rd(const TVector3& point) { fPointOnAcrylic3rd = point; }
-  void SetPointOnAcrylic4th(const TVector3& point) { fPointOnAcrylic4th = point; }
-
-  /// Distances
-  void SetDistInIV(const Double_t dist) { fDistInIV = dist; }
-  void SetDistInAcrylic(const Double_t dist) { fDistInAcrylic = dist; }
-  void SetDistInOV(const Double_t dist) { fDistInOV = dist; }
-
-  /// Energy
-  void SetEnergy(const Double_t energy) { fEnergy = energy; }
-
-  /// Solid Angle & Incident Angle
-  void SetSolidAngle(const Double_t solidAngle) { fSolidAngle = solidAngle; }
-  void SetCosThetaAvg(const Double_t cosThetaAvg) { fCosThetaAvg = cosThetaAvg; }
-
-  /// Fresnel Coefficients
-  void SetFresnelTCoeff(const Double_t coeff) { fFresnelTCoeff = coeff; }
-  void SetFresnelRCoeff(const Double_t coeff) { fFresnelRCoeff = coeff; }
-
  private:
   eLightPathType fLightPathType;  // Light path type, based on what regions of the detector the path enters
   std::map<eLightPathType, std::string> fLightPathTypeMap;  // Map containing a descriptor for the light path type
@@ -274,7 +157,7 @@ class LightPathCalculator {
   Double_t fDistInAcrylic;  // Distance in the acrylic
   Double_t fDistInOV;       // Distance in the OV
 
-  Double_t fWavelength;  // The value of the wavelength in MeV
+  Double_t fWavelength;  // The value of the wavelength in nm
 
   Double_t fSolidAngle;   // The solid angle subtended by the PMT for this light path
   Double_t fCosThetaAvg;  // Average incident angle on the PMT for this path, only calculated after a call to
