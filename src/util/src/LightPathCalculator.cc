@@ -1,12 +1,18 @@
-#include "RAT/LightPathCalculator.hh"
+#include "/home/srikar-temp/ratpac-two/src/util/include/RAT/LightPathCalculator.hh"
+//#include "RAT/LightPathCalculator.hh"
 
 ClassImp(RAT::LightPathCalculator)
 
     namespace RAT {
   // Constructor where user assigns the material for each region. Refractive indices are pulled from optics tables
-  LightPathCalculator::LightPathCalculator(std::string materialIV, std::string materialAcrylic,
-                                           std::string materialOV) {
+  LightPathCalculator::LightPathCalculator(const std::string& materialIV, const std::string& materialAcrylic,
+                                           const std::string& materialOV) {
+    std::cout << "Entering constructor" << std::endl;
+    DB* db = DB::Get();
     fUseOpticsTables = true;
+    fIVMaterial = materialIV;
+    fAcrylicMaterial = materialAcrylic;
+    fOVMaterial = materialOV;
 
     DBLinkPtr opticsIV;
     std::string optionIV;
@@ -22,9 +28,10 @@ ClassImp(RAT::LightPathCalculator)
     std::string optionOV;
     std::vector<double> valOneOV;
     std::vector<double> valTwoOV;
+    std::cout << "After intializations" << std::endl;
 
     try {
-      opticsIV = DB::Get()->GetLink("OPTICS", materialIV);
+      opticsIV = DB::Get()->GetLink("OPTICS", fIVMaterial);
       optionIV = opticsIV->GetS("RINDEX_option");
       valOneIV = opticsIV->GetDArray("RINDEX_value1");
       valTwoIV = opticsIV->GetDArray("RINDEX_value2");
@@ -33,7 +40,7 @@ ClassImp(RAT::LightPathCalculator)
       return;
     }
     try {
-      opticsAcrylic = DB::Get()->GetLink("OPTICS", materialAcrylic);
+      opticsAcrylic = DB::Get()->GetLink("OPTICS", fAcrylicMaterial);
       optionAcrylic = opticsAcrylic->GetS("RINDEX_option");
       valOneAcrylic = opticsAcrylic->GetDArray("RINDEX_value1");
       valTwoAcrylic = opticsAcrylic->GetDArray("RINDEX_value2");
@@ -43,7 +50,7 @@ ClassImp(RAT::LightPathCalculator)
       return;
     }
     try {
-      opticsOV = DB::Get()->GetLink("OPTICS", materialOV);
+      opticsOV = DB::Get()->GetLink("OPTICS", fOVMaterial);
       optionOV = opticsOV->GetS("RINDEX_option");
       valOneOV = opticsOV->GetDArray("RINDEX_value1");
       valTwoOV = opticsOV->GetDArray("RINDEX_value2");
@@ -51,6 +58,8 @@ ClassImp(RAT::LightPathCalculator)
       std::cout << "LightPathCalculator: Failed to retrieve optics information for OV: " << materialOV << std::endl;
       return;
     }
+
+    std::cout << "After linking" << std::endl;
 
     const double hbarc = 197.32705e-6;  // conversion from energy in MeV to nm
     for (int i = 0; i < 3; i++) {
@@ -97,22 +106,24 @@ ClassImp(RAT::LightPathCalculator)
       }
     }
 
-    SetGeoValues();
+    SetValues();
   }
 
   // Constructor where user chooses a single refractive index for each material
   LightPathCalculator::LightPathCalculator(Double_t refIV, Double_t refAcrylic, Double_t refOV) {
     fUseOpticsTables = false;
 
+    DB* db = DB::Get();
+
     fIVRefIndex = refIV;
     fAcrylicRefIndex = refAcrylic;
     fOVRefIndex = refOV;
 
-    SetGeoValues();
+    SetValues();
   }
 
   // Common aspects of constructor between both constructor options above
-  void LightPathCalculator::SetGeoValues() {
+  void LightPathCalculator::SetValues() {
     // Setting geometry specific values
     DBLinkPtr geoPtr = DB::Get()->GetLink("GEO", "eos_vessel");
     fIVCylRadius = geoPtr->GetD("r_max");
@@ -124,6 +135,15 @@ ClassImp(RAT::LightPathCalculator)
     fBarrelPMTHeight = 658.8;  // This is HALF the height
     fTopPMTRadius = 1070.0;
     fBotPMTRadius = 1070.0;
+
+    // Making the Light Path Type Map
+    fLightPathTypeMap[IAO] = "IV->Acrylic->OV";
+    fLightPathTypeMap[AIAO] = "Acrylic->IV->Acrylic->OV";
+    fLightPathTypeMap[AO] = "Acrylic->OV";
+    fLightPathTypeMap[O] = "OV";
+    fLightPathTypeMap[OAO] = "OV->Acrylic->OV";
+    fLightPathTypeMap[OAIAO] = "OV->Acrylic->IV->Acrylic->OV";
+    fLightPathTypeMap[Null] = "Light Path Type Un-initialized";
   }
 
   void LightPathCalculator::ResetValues() {
@@ -419,15 +439,15 @@ ClassImp(RAT::LightPathCalculator)
     } else {
       // This should NOT be reached, but have a check anyway. If a path is horizontal and starts within the cylinder, it
       // should end within the cylinder, meaning the first conditional is satisfied.
-      std::cout << "LightPathCalculator::IVToInnerEdge: Reached impossible conditional block. Start Position is ("
-                << fStartPos.X() << ", " << fStartPos.Y() << ", " << fStartPos.Z() << "), and initial direction is ("
-                << fInitialLightVec.X() << ", " << fInitialLightVec.Y() << ", " << fInitialLightVec.Z() << std::endl;
+      std::cout << "LightPathCalculator::IntersectAcrylic: Reached impossible conditional block. Start Position is ("
+                << initPos.X() << ", " << initPos.Y() << ", " << initPos.Z() << "), and initial direction is ("
+                << initDir.X() << ", " << initDir.Y() << ", " << initDir.Z() << std::endl;
       return TVector3(0, 0, 0);
     }
 
     TVector3 modStartPos;
     modStartPos.SetXYZ(initPos.X(), initPos.Y(),
-                       initPos.Z() + offset);  // Moving the z position to match the new relevant origin
+                       initPos.Z() + offset);  // Moving the z position to match the new relevant origins
 
     // Now, we repeat the process, but looking for the moment when the path crosses the spherical cap
     Double_t startingR = modStartPos.Mag();
@@ -455,6 +475,10 @@ ClassImp(RAT::LightPathCalculator)
 
     const Double_t ratioRI = incRIndex / refRIndex;
     const Double_t cosTheta1 = (normVec.Unit()).Dot(incidentVec.Unit());  // Incident angle [Snell's Law]
+    if (cosTheta1 >= 1.0) {
+      std::cout << "LightPathCalculator::PathRefraction: cosTheta1 is greater than 1 somehow" << std::endl;
+      PrintPrivateVariables();
+    }
     const Double_t cosTheta2 =
         TMath::Sqrt(1 - std::pow(ratioRI, 2) * (1 - std::pow(cosTheta1, 2)));  // Refracted Angle [Snell's Law]
 
@@ -468,15 +492,8 @@ ClassImp(RAT::LightPathCalculator)
       refractedVec = incidentVec;
     }
 
-    // FIGURE OUT THE REFRACTED VECTOR STUFF
-
-    // Define the refracted vector
-    else if (cosTheta1 >= 0.0) {
-      refractedVec = (ratioRI * incidentVec) + ((ratioRI * cosTheta1) - cosTheta2) * incidentSurfVec;
-    }
-
     else {
-      refractedVec = (ratioRI * incidentVec) - ((ratioRI * cosTheta1) - cosTheta2) * normVec;
+      refractedVec = (ratioRI * incidentVec) + ((ratioRI * cosTheta1) - cosTheta2) * normVec;
     }
 
     // Ensure the refracted vector is unit normalised
@@ -488,8 +505,8 @@ ClassImp(RAT::LightPathCalculator)
 
     // Check that the point is not beyond the PMTs before proceeding
     if (DetermineRegion(point) == "Past PMT") {
-      std::cout << "LightPathCalculator::GetNormalVector: Provided point is beyond the PMT region. Point is ("
-                << point.X() << ", " << point.Y() << ", " << point.Z() << ")" << std::endl;
+      std::cout << "LightPathCalculator::GetNormalVector: Provided point is beyond the PMT region." << std::endl;
+      PrintPrivateVariables();
       return TVector3(0.0, 0.0, 0.0);
     }
 
@@ -517,13 +534,13 @@ ClassImp(RAT::LightPathCalculator)
         normalVector = normalVector.Unit();
       } else {
         std::cout << "LightPathCalculator::GetNormalVector: Impossible conditional block reached. Point is ("
-                  << point.X() << ", " << point.Y() << ", " + point.Z() << ")" << std::endl;
-        return;
+                  << point.X() << ", " << point.Y() << ", " << point.Z() << ")" << std::endl;
+        return TVector3(0.0, 0.0, 0.0);
       }
     } else {
       std::cout << "LightPathCalculator::GetNormalVector: Provided point is too far from either acrylic edge."
                 << std::endl;
-      return;
+      return TVector3(0.0, 0.0, 0.0);
     }
     return normalVector;
   }
@@ -606,6 +623,29 @@ ClassImp(RAT::LightPathCalculator)
     } else {
       return "Past PMT";
     }
+  }
+
+  void LightPathCalculator::PrintPrivateVariables() {
+    // This function is used to print out all the various private member variables, useful when an "impossible" or
+    // "improper" condition is encountered
+    std::cout << "Light Path Type: " << fLightPathTypeMap[fLightPathType] << std::endl;
+    /*<< "Starting position: (" << fStartPos.X() << ", " << fStartPos.Y() << ", " << fStartPos.Z() << ")" << std::endl
+    << "Starting region: " << fStartingRegion << std::endl
+    << "Ending position (user input): " << fEndPos.X() << ", " << fEndPos.Y() << ", " << fEndPos.Z() << ")" << std::endl
+    << "Ending position (calculated): " << fLightPathEndPos.X() << ", " << fLightPathEndPos.Y() << ", " <<
+    fLightPathEndPos.Z() << ")" << std::endl
+    << "Refractive indices: " << fIVRefIndex << ", " << fAcrylicRefIndex << ", " << fOVRefIndex << std::endl
+    << "Materials: " << fIVMaterial << ", " << fAcrylicMaterial << ", " << fOVMaterial << std::endl
+    << "Initial Light Vector: (" << fInitialLightVec.X() << ", " << fInitialLightVec.Y() << ", " << fInitialLightVec.Z()
+    << ")" << std::endl
+    << "First Point on Acrylic: (" << fPointOnAcrylic1st.X() << ", " << fPointOnAcrylic1st.X() << ", " <<
+    fPointOnAcrylic1st.Z() << ")" << std::endl
+    << "Second Point on Acrylic: (" << fPointOnAcrylic2nd.X() << ", " << fPointOnAcrylic2nd.X() << ", " <<
+    fPointOnAcrylic2nd.Z() << ")" << std::endl
+    << "Third Point on Acrylic: (" << fPointOnAcrylic3rd.X() << ", " << fPointOnAcrylic3rd.X() << ", " <<
+    fPointOnAcrylic3rd.Z() << ")" << std::endl
+    << "Fourth Point on Acrylic: (" << fPointOnAcrylic4th.X() << ", " << fPointOnAcrylic4th.X() << ", " <<
+    fPointOnAcrylic4th.Z() << ")" << std::endl;*/
   }
 
 }  // namespace RAT

@@ -1,5 +1,5 @@
-#ifndef __LightPathCalculator_hh__
-#define __LightPathCalculator_hh__
+#ifndef __RAT_LightPathCalculator_hh__
+#define __RAT_LightPathCalculator_hh__
 
 #include <dirent.h>
 #include <stdio.h>
@@ -13,7 +13,6 @@
 #include <string>
 #include <vector>
 
-#include "G4PhysicalConstants.hh"
 #include "RAT/DB.hh"
 #include "TGraph.h"
 #include "TMath.h"
@@ -39,13 +38,13 @@ class LightPathCalculator {
   /////////////////////////////////
 
   /// Default Constructor
-  LightPathCalculator(std::string materialIV, std::string materialAcrylic, std::string materialOV);
+  LightPathCalculator(const std::string& materialIV, const std::string& materialAcrylic, const std::string& materialOV);
 
   /// Constructor enforcing exact refractive indices rather than pulling from ratDB table
   LightPathCalculator(Double_t refIV, Double_t refAcrylic, Double_t refOV);
 
   /// Part of constructor that is the same for both constructors. Eos geometry related variables
-  void SetGeoValues();
+  void SetValues();
 
   // Resets the variables that are calculated and filled during "CalcByPosition"
   void ResetValues();
@@ -108,6 +107,9 @@ class LightPathCalculator {
   /// @return The refractive index in the scintillator for this wavelength (energy)
   Double_t InterpolateTGraph(const TGraph& graph, const Double_t wl);
 
+  // Function to print out the private member variables
+  void PrintPrivateVariables();
+
  private:
   eLightPathType fLightPathType;  // Light path type, based on what regions of the detector the path enters
   std::map<eLightPathType, std::string> fLightPathTypeMap;  // Map containing a descriptor for the light path type
@@ -131,7 +133,11 @@ class LightPathCalculator {
   TGraph fAcrylicRefIndexGraph;  // Acrylic refractive index vector from optics table
   Double_t fOVRefIndex;          // The value of the OV refractive index used for this path
   TGraph fOVRefIndexGraph;       // OV refractive index vector from optics table
-  Double_t fUseOpticsTables;
+  Double_t fUseOpticsTables;     // Flag that dictates if LPC is using the ratdb optics information
+
+  std::string fIVMaterial;       // IV Material, initialized if the material constructor is used
+  std::string fAcrylicMaterial;  // Acrylic Material, initialized if the material constructor is used
+  std::string fOVMaterial;       // OV Material, initialized if the material constructor is used
 
   TVector3 fIncidentVecOnPMT;  // Final light path direction (unit normalised)
   TVector3 fInitialLightVec;   // Initial light path direction (unit normalised)
@@ -141,9 +147,10 @@ class LightPathCalculator {
   TVector3 fLightPathEndPos;    // Calculated end position of the light path
   std::string fStartingRegion;  // The region of the starting position.
 
-  Bool_t fIsTIR;         // TRUE: Total Internal Reflection encountered FALSE: It wasn't
-  Bool_t fWithinError;   // TRUE: Difficult path to resolve and calculate FALSE: It wasn't
-  Bool_t fStraightLine;  // TRUE: Light Path is a straight line approximation FALSE: It isn't
+  Double_t fPathPrecision;  // The accepted path proximity/tolerance to the PMT location [mm]
+  Bool_t fIsTIR;            // TRUE: Total Internal Reflection encountered FALSE: It wasn't
+  Bool_t fWithinError;      // TRUE: Difficult path to resolve and calculate FALSE: It wasn't
+  Bool_t fStraightLine;     // TRUE: Light Path is a straight line approximation FALSE: It isn't
 
   /// Refraction points
   /// Depending on Light Path, could intersect the acrylic up to four times (counting inner and outer points separately)
@@ -165,8 +172,6 @@ class LightPathCalculator {
 
   Double_t fFresnelTCoeff;  // The combined Fresnel TRANSMISSION coefficient for this path
   Double_t fFresnelRCoeff;  // The combined Fresnel REFLECTIVITY coefficient for this path
-
-  Double_t fPathPrecision;  // The accepted path proximity/tolerance to the PMT location [mm]
 };
 }  // namespace RAT
 

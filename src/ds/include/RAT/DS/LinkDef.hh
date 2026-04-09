@@ -50,6 +50,8 @@
 #pragma link C++ class RAT::HTTPDownloader + ;
 #pragma link C++ class RAT::DBFieldCallback + ;
 
+#pragma link C++ class RAT::LightPathCalculator + ;
+
 #endif  // __CINT__
 
 #ifdef __MAKECINT__
