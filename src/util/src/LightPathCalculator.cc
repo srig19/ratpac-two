@@ -123,7 +123,15 @@ LightPathCalculator::LightPathCalculator(Double_t refIV, Double_t refAcrylic, Do
 
 // Common aspects of constructor between both constructor options above
 void LightPathCalculator::SetValues() {
-  // Setting geometry specific values
+  std::cout << "Setting values" << std::endl;
+  DB* db = DB::Get();
+  std::cout << "Got DB" << std::endl;
+  db->LoadDefaults();
+  std::cout << "Loaded defaults" << std::endl;
+  db->Load("Eos/Eos.geo");
+  std::cout << "Loaded geometry file" << std::endl;
+  // db->Load (db->GetLink("DETECTOR")->GetS("geo_file"));
+  //  Setting geometry specific values
   DBLinkPtr geoPtr = DB::Get()->GetLink("GEO", "eos_vessel");
   fIVCylRadius = geoPtr->GetD("r_max");
   fIVCylHeight = geoPtr->GetD("size_z");  // This is HALF the height
@@ -143,6 +151,7 @@ void LightPathCalculator::SetValues() {
   fLightPathTypeMap[OAO] = "OV->Acrylic->OV";
   fLightPathTypeMap[OAIAO] = "OV->Acrylic->IV->Acrylic->OV";
   fLightPathTypeMap[Null] = "Light Path Type Un-initialized";
+  std::cout << "Finished setting values" << std::endl;
 }
 
 void LightPathCalculator::ResetValues() {
