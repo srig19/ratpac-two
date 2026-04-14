@@ -20,6 +20,7 @@
 #include "TVector3.h"
 
 namespace RAT {
+
 /// Light Path Types
 /// 'IAO'   - Inner Vessel -> Acrylic -> Outer Vessel -> PMT
 /// 'AO'    - Acrylic -> Outer Vessel -> PMT
