@@ -168,13 +168,13 @@ Processor::Result ClassifyTimesProc::Event(DS::Root *ds, DS::EV *ev) {
     }
 
     // If light speed not set by user, check if saved in fitter
-    if (!fSetSpeed) {
+    /*if (!fSetSpeed) {
       try {
         fLightSpeed = fit->GetFigureOfMerit("light_speed");
       } catch (...) {
         // keep default light speed
       }
-    }
+    }*/
 
     if (fit->GetEnablePosition()) {
       eventPos = fit->GetPosition();
