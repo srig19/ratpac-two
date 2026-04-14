@@ -5,7 +5,6 @@
 #include <TTree.h>
 #include <sys/types.h>
 
-#include <RAT/DS/FitResult.hh>
 #include <RAT/DS/Run.hh>
 #include <RAT/Processor.hh>
 #include <functional>
@@ -73,8 +72,6 @@ class OutNtupleProc : public Processor {
 
   std::vector<std::string> waveform_fitters;
   std::map<std::string, std::vector<std::string>> waveform_fitter_FOMs;
-  std::vector<std::string> event_fitters;
-  std::map<std::string, std::vector<std::string>> event_fitter_FOMs;
 
  protected:
   std::string defaultFilename;
@@ -185,9 +182,9 @@ class OutNtupleProc : public Processor {
   std::vector<double> mcDirz;
   std::vector<double> mcTime;
   // Reconstruted variables
-  std::map<std::string, double> fitvalues;
-  std::map<std::string, bool> fitvalids;
-  std::map<std::string, std::map<std::string, double>> fiteventFOMs;
+  std::vector<int> fitterId;
+  std::vector<double> fitx, fity, fitz;
+  std::vector<double> fitu, fitv, fitw;
   // Store PMT Hit Positions
   std::vector<int> hitPMTID;
   std::vector<double> hitPMTTime;
@@ -207,10 +204,13 @@ class OutNtupleProc : public Processor {
   int digitHitCleanedNhits;
   std::vector<uint64_t> digitHitCleaningMask;
   // Information from fit to the waveforms
-  std::map<std::string, std::vector<int>> wfmFitPmtID;
-  std::map<std::string, std::vector<double>> wfmFitTime;
-  std::map<std::string, std::vector<double>> wfmFitCharge;
-  std::map<std::string, std::map<std::string, std::vector<double>>> wfmFitFOM;
+  std::map<std::string, std::vector<int>> fitPmtID;
+  std::map<std::string, std::vector<double>> fitTime;
+  std::map<std::string, std::vector<double>> fitCharge;
+  std::map<std::string, std::map<std::string, std::vector<double>>> fitFOM;
+  // std::vector<double> fitTime;
+  std::vector<double> fitBaseline;
+  std::vector<double> fitPeak;
   // Tracking
   std::map<std::string, int> processCodeMap;
   std::vector<int> processCodeIndex;
@@ -231,6 +231,18 @@ class OutNtupleProc : public Processor {
   std::vector<std::vector<double>> trackTime;
   std::vector<std::vector<int>> trackProcess;
   std::vector<std::vector<int>> trackVolume;
+
+  std::set<std::string> branchNames;
+
+  template <typename T>
+  void SetBranchValue(std::string name, T *value) {
+    if (branchNames.find(name) != branchNames.end()) {
+      outputTree->SetBranchAddress(name.c_str(), value);
+    } else {
+      branchNames.insert(name);
+      outputTree->Branch(name.c_str(), value);
+    }
+  }
 };
 
 }  // namespace RAT

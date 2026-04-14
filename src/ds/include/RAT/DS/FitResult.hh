@@ -5,19 +5,27 @@
 #include <TVector3.h>
 
 #include <RAT/DS/Classifier.hh>
-#include <RAT/Log.hh>
 #include <map>
 #include <string>
+#include <vector>
 
 namespace RAT {
 namespace DS {
 
 class FitResult : public TObject {
  public:
-  FitResult(std::string _name = "", std::string _tag = "")
+  FitResult(std::string name)
       : TObject(),
-        fitter_name(_name),
-        tag(_tag),
+        fit_name(name),
+        fit_pass(0),
+        fit_position(-1e9, -1e9, -1e9),
+        fit_direction(0, 0, 0),
+        fit_energy(-1e9),
+        fit_time(-1e9) {}
+  FitResult()
+      : TObject(),
+        fit_name(""),
+        fit_pass(0),
         fit_position(-1e9, -1e9, -1e9),
         fit_direction(0, 0, 0),
         fit_energy(-1e9),
@@ -25,14 +33,8 @@ class FitResult : public TObject {
   virtual ~FitResult() {}
 
   // Fitter name
-  virtual const std::string &GetFitterName() const { return fitter_name; }
-  virtual void SetFitterName(const std::string &_name) { fitter_name = _name; }
-  virtual const std::string &GetTag() const { return tag; }
-  virtual void SetTag(const std::string &_tag) { tag = _tag; }
-  virtual const std::string GetFullName() const {
-    if (tag.empty()) return fitter_name;
-    return fitter_name + "__" + tag;
-  }
+  virtual const std::string &GetFitterName() const { return fit_name; }
+  virtual void SetFitterName(const std::string &_name) { fit_name = _name; }
 
   // Fitted Position
   virtual const TVector3 &GetPosition() const { return fit_position; }
@@ -82,25 +84,28 @@ class FitResult : public TObject {
   virtual const bool GetEnableTime() { return enable_time; }
   virtual void SetEnableTime(const bool _enable) { enable_time = _enable; }
 
-  // Figure of Merit
-  void SetFigureOfMerit(const std::string &name, double value) { figuresOfMerit[name] = value; }
-  double GetFigureOfMerit(const std::string &name) {
-    if (figuresOfMerit.find(name) == figuresOfMerit.end()) {
-      return -9999;
-    }
-    return figuresOfMerit.at(name);
-  }
+  // Figures of Merit (arbitrary number)
+  void SetIntFigureOfMerit(const std::string &name, int value) { intFiguresOfMerit[name] = value; }
+  void SetBoolFigureOfMerit(const std::string &name, bool value) { boolFiguresOfMerit[name] = value; }
+  void SetDoubleFigureOfMerit(const std::string &name, double value) { doubleFiguresOfMerit[name] = value; }
 
-  std::map<std::string, double> figuresOfMerit;
+  int GetIntFigureOfMerit(const std::string &name) { return intFiguresOfMerit[name]; }
+  bool GetBoolFigureOfMerit(const std::string &name) { return boolFiguresOfMerit[name]; }
+  double GetDoubleFigureOfMerit(const std::string &name) { return doubleFiguresOfMerit[name]; }
+
+  // Figures of Merit
+  std::map<std::string, int> intFiguresOfMerit;
+  std::map<std::string, bool> boolFiguresOfMerit;
+  std::map<std::string, double> doubleFiguresOfMerit;
 
   // Classification
   std::map<std::string, Classifier> classifiers;
 
-  ClassDef(FitResult, 2);
+  ClassDef(FitResult, 1);
 
  protected:
-  std::string fitter_name;  // name of the fitter that produced this result
-  std::string tag;          // label for this specific fit result
+  std::string fit_name;
+  int fit_pass;
   // Fit values
   TVector3 fit_position;
   TVector3 fit_direction;
