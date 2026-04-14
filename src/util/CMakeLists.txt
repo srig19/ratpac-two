@@ -16,8 +16,7 @@ add_library(util OBJECT
         src/quadrature/Evaluateable.cc
         src/quadrature/Quadrature.cc
         src/quadrature/FixedTrapezoidalQuadrature.cc
-        src/quadrature/AdaptiveSimpsonQuadrature.cc 
-	src/LightPathCalculator.cc
+        src/quadrature/AdaptiveSimpsonQuadrature.cc
 	)
 # Set our include directories
 target_include_directories(util SYSTEM PUBLIC 

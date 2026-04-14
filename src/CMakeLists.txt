@@ -51,8 +51,7 @@ add_library(RATEvent SHARED
        io/src/DSWriter.cc
        io/src/TrackCursor.cc
        io/src/TrackNav.cc
-       util/src/ReadFile.cc
-       util/src/LightPathCalculator.cc)
+       util/src/ReadFile.cc)
 target_include_directories(RATEvent SYSTEM PUBLIC ${ROOT_INCLUDE_DIRS}/stlplus)
 target_include_directories(RATEvent PUBLIC ${RATPAC_INCLUDE_DIR})
 target_link_libraries(RATEvent PUBLIC 
