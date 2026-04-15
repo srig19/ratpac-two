@@ -42,7 +42,7 @@ class LightPathCalculator {
   LightPathCalculator(const std::string& materialIV, const std::string& materialAcrylic, const std::string& materialOV);
 
   /// Constructor enforcing exact refractive indices rather than pulling from ratDB table
-  LightPathCalculator(Double_t refIV, Double_t refAcrylic, Double_t refOV);
+  LightPathCalculator(const Double_t& refIV, const Double_t& refAcrylic, const Double_t& refOV);
 
   /// Part of constructor that is the same for both constructors. Eos geometry related variables
   void SetValues();
