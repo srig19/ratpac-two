@@ -551,6 +551,20 @@ Processor::Result OutNtupleProc::DSEvent(DS::Root *ds) {
     for (auto const &[label, value] : doubleFOMs) {
       this->SetBranchValue(label, value);
     }
+
+    auto classifierVector = ev->GetClassifierResults();
+    std::map<std::string, double *> classifiervalues;
+    for (auto clf : classifierVector) {
+      std::string name = clf->GetClassifierName();
+      for (auto const &label : clf->classificationLabels) {
+        classifiervalues[name + "_" + label] = new double(clf->GetClassificationResult(label));
+      }
+    }
+    // Write classifier values into TTree
+    for (auto const &[label, value] : classifiervalues) {
+      this->SetBranchValue(label, value);
+    }
+
     nhits = ev->GetPMTCount();
     totalcharge = ev->GetTotalCharge();
     if (options.pmthits) {
