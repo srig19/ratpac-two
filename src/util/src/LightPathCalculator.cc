@@ -268,13 +268,6 @@ void LightPathCalculator::CalcByPosition(TVector3 eventPos, TVector3 pmtPos, dou
     fStraightLine = false;
   }
 
-  /*// If the start position magnitude is 0.0, then set it to something very small so that all the vector algebra
-  works if (startPosMag == 0.0) { fStartPos.SetXYZ(1.0e-4, 0.0, 0.0);
-  }
-  if (endPosMag == 0.0) {
-    fEndPos.SetXYZ(1.0e-4, 0.0, 0.0);
-  }*/
-
   // The path result, whether it was calculated successfully, within error and no TIR, (true) or it failed (false)
   Bool_t pathResult = false;
 
@@ -510,17 +503,19 @@ TVector3 LightPathCalculator::IntersectAcrylic(const TVector3& initPos, const TV
   modStartPos.SetXYZ(initPos.X(), initPos.Y(),
                      initPos.Z() + offset);  // Moving the z position to match the new relevant origins
 
+  std::cout << "modified position: " << modStartPos.X() << ", " << modStartPos.Y() << ", " << modStartPos.Z()
+            << std::endl;
   // Now, we repeat the process, but looking for the moment when the path crosses the spherical cap
   Double_t startingR = modStartPos.Mag();
-  aCoeff =
-      (initDir.X() * initDir.X()) + (initDir.Y() * initDir.Y()) +
-      (initDir.Z() * initDir.Z());  // std::pow(initDir.X(), 2) + std::pow(initDir.Y(), 2) + std::pow(initDir.Z(), 2);
+  aCoeff = (initDir.X() * initDir.X()) + (initDir.Y() * initDir.Y()) + (initDir.Z() * initDir.Z());
   bCoeff = 2 * (modStartPos.X() * initDir.X() + modStartPos.Y() * initDir.Y() + modStartPos.Z() * initDir.Z());
-  cCoeff = (startingR * startingR) -
-           (acrylicCapRad * acrylicCapRad);  // std::pow(startingR, 2) - std::pow(acrylicCapRad, 2);
+  cCoeff = (startingR * startingR) - (acrylicCapRad * acrylicCapRad);
 
-  tCross = (-1 * bCoeff + TMath::Sqrt((bCoeff * bCoeff) - (4 * aCoeff * cCoeff))) /
-           (2 * aCoeff);  //(-1 * bCoeff + TMath::Sqrt(std::pow(bCoeff, 2) - 4 * aCoeff * cCoeff)) / (2 * aCoeff);
+  if (DetermineRegion(initPos) == "OV") {
+    tCross = (-1 * bCoeff - TMath::Sqrt((bCoeff * bCoeff) - (4 * aCoeff * cCoeff))) / (2 * aCoeff);
+  } else {
+    tCross = (-1 * bCoeff + TMath::Sqrt((bCoeff * bCoeff) - (4 * aCoeff * cCoeff))) / (2 * aCoeff);
+  }
   xCross = modStartPos.X() + (initDir.X() * tCross);
   yCross = modStartPos.Y() + (initDir.Y() * tCross);
   zCross = modStartPos.Z() + (initDir.Z() * tCross);
@@ -552,10 +547,8 @@ TVector3 LightPathCalculator::PathRefraction(const TVector3& incidentVec, const 
     std::cout << "LightPathCalculator::PathRefraction: cosTheta1 is greater than 1 somehow" << std::endl;
     PrintPrivateVariables();
   }
-  const Double_t cosTheta2 = TMath::Sqrt(
-      1 - (ratioRI * ratioRI) *
-              (1 - (cosTheta1 * cosTheta1)));  // TMath::Sqrt(1 - std::pow(ratioRI, 2) * (1 - std::pow(cosTheta1, 2)));
-                                               // // Refracted Angle [Snell's Law]
+  const Double_t cosTheta2 =
+      TMath::Sqrt(1 - (ratioRI * ratioRI) * (1 - (cosTheta1 * cosTheta1)));  // Refracted Angle (Snell's Law)
   std::cout << "costheta2: " << cosTheta2 << std::endl;
 
   // Initialize the refracted photon vector
@@ -569,7 +562,7 @@ TVector3 LightPathCalculator::PathRefraction(const TVector3& incidentVec, const 
   }
 
   else {
-    refractedVec = (ratioRI * incidentVec) + ((ratioRI * cosTheta1) - cosTheta2) * normVec;
+    refractedVec = (ratioRI * incidentVec) + ((ratioRI * cosTheta1) - cosTheta2) * -1 * normVec;
   }
 
   std::cout << "refractedVec: " << refractedVec.X() << ", " << refractedVec.Y() << ", " << refractedVec.Z()
@@ -588,9 +581,7 @@ TVector3 LightPathCalculator::GetNormalVector(const TVector3& point, double tole
     return TVector3(0.0, 0.0, 0.0);
   }
 
-  double cylRad =
-      TMath::Sqrt((point.X() * point.X()) +
-                  (point.Y() * point.Y()));  // TMath::Sqrt(std::pow(point.X(), 2) + std::pow(point.Y(), 2));
+  double cylRad = TMath::Sqrt((point.X() * point.X()) + (point.Y() * point.Y()));
   double sphereRad = point.Mag();
   double height = point.Z();
   TVector3 normalVector;
@@ -626,8 +617,7 @@ TVector3 LightPathCalculator::GetNormalVector(const TVector3& point, double tole
 }
 
 std::string LightPathCalculator::DetermineRegion(const TVector3& point) {
-  double cylRad = TMath::Sqrt((point.X() * point.X()) +
-                              (point.Y() * point.Y()));  // TMath::Sqrt(pow(point.X(), 2) + pow(point.Y(), 2));
+  double cylRad = TMath::Sqrt((point.X() * point.X()) + (point.Y() * point.Y()));
   double sphereRad = point.Mag();
   double height = point.Z();
 
