@@ -143,7 +143,10 @@ void LightPathCalculator::SetValues() {
   fIVCylHeight = 676.91;
   fIVCapRadius = 1699.51;
 
-  fIVCapOffset = TMath::Abs(fIVCapRadius - fIVCylHeight);
+  fIVCapOffset =
+      TMath::Abs(fIVCapRadius -
+                 (fIVCylHeight + (10.3 * 25.4)));  // The 10.3 inches was determined by Yash. UPDATE WITH RATDB FIELD
+  std::cout << "offset: " << fIVCapOffset << std::endl;
   fAcrylicThickness = 25.4;  // Acrylic is 1 inch thick
   fBarrelPMTRadius = 1049.6;
   fBarrelPMTHeight = 658.8;  // This is HALF the height
@@ -437,13 +440,37 @@ TVector3 LightPathCalculator::IntersectAcrylic(const TVector3& initPos, const TV
 
   // First, check the cases where the direction is entirely vertical. Those paths won't cross the acrylic boundaries, so
   // the code after this conditional won't work
+  std::cout << "position " << initPos.X() << ", " << initPos.Y() << ", " << initPos.Z() << " in "
+            << DetermineRegion(initPos) << std::endl;
   if (initDir.X() == 0 && initDir.Y() == 0) {
     if (initDir.Z() < 0) {
-      // Crossing occurs at the lower spherical cap
-      zCross = -TMath::Sqrt((fIVCapRadius * fIVCapRadius) - (initPos.X() * initPos.X()) - (initPos.Y() * initPos.Y()));
+      if (DetermineRegion(initPos) == "OV") {
+        // Crossing occurs at the upper spherical cap
+        std::cout << "on the upper side 1" << std::endl;
+        zCross =
+            TMath::Sqrt((acrylicCapRad * acrylicCapRad) - (initPos.X() * initPos.X()) - (initPos.Y() * initPos.Y())) -
+            fIVCapOffset;
+      } else {
+        // Crossing occurs at the lower spherical cap
+        std::cout << "on the lower side 1 " << std::endl;
+        zCross =
+            -TMath::Sqrt((acrylicCapRad * acrylicCapRad) - (initPos.X() * initPos.X()) - (initPos.Y() * initPos.Y())) +
+            fIVCapOffset;
+      }
     } else if (initDir.Z() > 0) {
-      // Crossing occurs at the upper spherical cap
-      zCross = TMath::Sqrt((fIVCapRadius * fIVCapRadius) - (initPos.X() * initPos.X()) - (initPos.Y() * initPos.Y()));
+      if (DetermineRegion(initPos) == "OV") {
+        // Crossing occurs at the lower spherical cap
+        std::cout << "On the lower side 2 " << std::endl;
+        zCross =
+            -TMath::Sqrt((acrylicCapRad * acrylicCapRad) - (initPos.X() * initPos.X()) - (initPos.Y() * initPos.Y())) +
+            fIVCapOffset;
+      } else {
+        // Crossing occurs at the upper spherical cap
+        std::cout << "on the upper side 2" << std::endl;
+        zCross =
+            TMath::Sqrt((acrylicCapRad * acrylicCapRad) - (initPos.X() * initPos.X()) - (initPos.Y() * initPos.Y())) -
+            fIVCapOffset;
+      }
     }
     // Because the path is entirely vertical, the x, y values at the intersection point don't change.
     intersectionPoint.SetXYZ(initPos.X(), initPos.Y(), zCross);
@@ -556,7 +583,6 @@ TVector3 LightPathCalculator::PathRefraction(const TVector3& incidentVec, const 
   std::cout << "norm vec: " << normVec.X() << ", " << normVec.Y() << ", " << normVec.Z() << std::endl;
 
   const Double_t ratioRI = incRIndex / refRIndex;
-  std::cout << ratioRI << std::endl;
   const Double_t cosTheta1 = (normVec.Unit()).Dot(incidentVec.Unit());  // Incident angle [Snell's Law]
   std::cout << "costheta1: " << cosTheta1 << std::endl;
   if (cosTheta1 > 1.0) {
@@ -597,10 +623,18 @@ TVector3 LightPathCalculator::GetNormalVector(const TVector3& point, double tole
     return TVector3(0.0, 0.0, 0.0);
   }
 
+  TVector3 testCapPoint;
+  if (point.Z() > 0) {
+    testCapPoint.SetXYZ(point.X(), point.Y(), point.Z() + fIVCapOffset);
+  } else {
+    testCapPoint.SetXYZ(point.X(), point.Y(), point.Z() - fIVCapOffset);
+  }
   double cylRad = TMath::Sqrt((point.X() * point.X()) + (point.Y() * point.Y()));
-  double sphereRad = point.Mag();
+  double sphereRad = testCapPoint.Mag();
   double height = point.Z();
   TVector3 normalVector;
+
+  std::cout << "GetNormalVector values: " << cylRad << ", " << sphereRad << ", " << height << std::endl;
 
   // The difference between intersection with the inner and outer edges only matter for this tolerance check.
   // Because the Eos vesssel is cylindrical and spherical the normal vectors will be equal on the inner and outer
@@ -634,14 +668,20 @@ TVector3 LightPathCalculator::GetNormalVector(const TVector3& point, double tole
 
 std::string LightPathCalculator::DetermineRegion(const TVector3& point) {
   double cylRad = TMath::Sqrt((point.X() * point.X()) + (point.Y() * point.Y()));
-  double sphereRad = point.Mag();
+  TVector3 testCapPoint;
+  if (point.Z() > 0) {
+    testCapPoint.SetXYZ(point.X(), point.Y(), point.Z() + fIVCapOffset);
+  } else {
+    testCapPoint.SetXYZ(point.X(), point.Y(), point.Z() - fIVCapOffset);
+  }
+  double sphereRad = testCapPoint.Mag();
   double height = point.Z();
 
   if (cylRad < fIVCylRadius) {
     if (TMath::Abs(height) < fIVCylHeight) {
       return "IV";
     } else if (sphereRad < fIVCapRadius) {
-      return "IV";  // Technically satisfied by previous, but nice to separate
+      return "IV";
     } else if (sphereRad < (fIVCapRadius + fAcrylicThickness)) {
       return "Acrylic";
     } else {
