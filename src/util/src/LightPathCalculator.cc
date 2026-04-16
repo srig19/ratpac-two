@@ -435,6 +435,22 @@ TVector3 LightPathCalculator::IntersectAcrylic(const TVector3& initPos, const TV
     acrylicCapRad += fAcrylicThickness;
   }
 
+  // First, check the cases where the direction is entirely vertical. Those paths won't cross the acrylic boundaries, so
+  // the code after this conditional won't work
+  if (initDir.X() == 0 && initDir.Y() == 0) {
+    if (initDir.Z() < 0) {
+      // Crossing occurs at the lower spherical cap
+      zCross = -TMath::Sqrt((fIVCapRadius * fIVCapRadius) - (initPos.X() * initPos.X()) - (initPos.Y() * initPos.Y()));
+    } else if (initDir.Z() > 0) {
+      // Crossing occurs at the upper spherical cap
+      zCross = TMath::Sqrt((fIVCapRadius * fIVCapRadius) - (initPos.X() * initPos.X()) - (initPos.Y() * initPos.Y()));
+    }
+    // Because the path is entirely vertical, the x, y values at the intersection point don't change.
+    intersectionPoint.SetXYZ(initPos.X(), initPos.Y(), zCross);
+    std::cout << "vertical point: " << initPos.X() << ", " << initPos.Y() << ", " << zCross << std::endl;
+    return intersectionPoint;
+  }
+
   // The path as a function of time is described as fStartPos + fInitialLightVec * t
   // First, we check if the cylindrical radius, rho(t), crosses the acrylic when the height is below the acrylic
   // cylinder height. rho(t) = sqrt((rho_0x^2 + v_0x^2 * t)^2 + (rho_0y^2 + v_0y^2 * t)^2) = fIVCylRadius. This becomes
