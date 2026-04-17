@@ -367,7 +367,7 @@ void LightPathCalculator::PathCalculation() {
     fLightPathType = IAO;
 
     // Find the point where the light path intersects the inner edge of the acrylic from the IV.
-    fPointOnAcrylic1st = IntersectAcrylic(fStartPos, fInitialLightVec, false);
+    fPointOnAcrylic1st = IntersectAcrylic(fStartPos, fInitialLightVec, false, false);
     std::cout << "first point: " << fPointOnAcrylic1st.X() << ", " << fPointOnAcrylic1st.Y() << ", "
               << fPointOnAcrylic1st.Z() << std::endl;
 
@@ -376,7 +376,7 @@ void LightPathCalculator::PathCalculation() {
     std::cout << "vecOne: " << vecOne.X() << ", " << vecOne.Y() << ", " << vecOne.Z() << std::endl;
 
     // Find the point where the light path intersects the outer edge of the acrylic from the inner edge.
-    fPointOnAcrylic2nd = IntersectAcrylic(fPointOnAcrylic1st, vecOne, true);
+    fPointOnAcrylic2nd = IntersectAcrylic(fPointOnAcrylic1st, vecOne, true, false);
     std::cout << "second point: " << fPointOnAcrylic2nd.X() << ", " << fPointOnAcrylic2nd.Y() << ", "
               << fPointOnAcrylic2nd.Z() << std::endl;
 
@@ -386,7 +386,7 @@ void LightPathCalculator::PathCalculation() {
 
     // Work backwards from the PMT position to determine where vecTwo should originate from the outer edge of the
     // acrylic to hit the designated end pos.
-    TVector3 calcPointOnAcrylic2nd = IntersectAcrylic(fEndPos, (-1 * vecTwo), true);
+    TVector3 calcPointOnAcrylic2nd = IntersectAcrylic(fEndPos, (-1 * vecTwo), true, true);
     std::cout << "calc point2nd: " << calcPointOnAcrylic2nd.X() << ", " << calcPointOnAcrylic2nd.Y() << ", "
               << calcPointOnAcrylic2nd.Z() << std::endl;
 
@@ -418,8 +418,8 @@ void LightPathCalculator::PathCalculation() {
   }
 }
 
-TVector3 LightPathCalculator::IntersectAcrylic(const TVector3& initPos, const TVector3& initDir,
-                                               const bool& outerEdge) {
+TVector3 LightPathCalculator::IntersectAcrylic(const TVector3& initPos, const TVector3& initDir, const bool& outerEdge,
+                                               const bool& backwardCalc) {
   Double_t startingRho =
       TMath::Sqrt((initPos.X() * initPos.X()) +
                   (initPos.Y() * initPos.Y()));  // TMath::Sqrt(std::pow(initPos.X(), 2) + std::pow(initPos.Y(), 2));
@@ -444,7 +444,7 @@ TVector3 LightPathCalculator::IntersectAcrylic(const TVector3& initPos, const TV
             << DetermineRegion(initPos) << std::endl;
   if (initDir.X() == 0 && initDir.Y() == 0) {
     if (initDir.Z() < 0) {
-      if (DetermineRegion(initPos) == "OV") {
+      if (backwardCalc) {
         // Crossing occurs at the upper spherical cap
         std::cout << "on the upper side 1" << std::endl;
         zCross =
@@ -458,7 +458,7 @@ TVector3 LightPathCalculator::IntersectAcrylic(const TVector3& initPos, const TV
             fIVCapOffset;
       }
     } else if (initDir.Z() > 0) {
-      if (DetermineRegion(initPos) == "OV") {
+      if (backwardCalc) {
         // Crossing occurs at the lower spherical cap
         std::cout << "On the lower side 2 " << std::endl;
         zCross =
@@ -490,7 +490,7 @@ TVector3 LightPathCalculator::IntersectAcrylic(const TVector3& initPos, const TV
                     (acrylicCylRad * acrylicCylRad);  // std::pow(startingRho, 2) - std::pow(acrylicCylRad, 2);
 
   Double_t tCross;
-  if (DetermineRegion(initPos) == "OV") {
+  if (backwardCalc) {
     tCross = (-1 * bCoeff - TMath::Sqrt((bCoeff * bCoeff) - (4 * aCoeff * cCoeff))) / (2 * aCoeff);
   } else {
     tCross = (-1 * bCoeff + TMath::Sqrt((bCoeff * bCoeff) - (4 * aCoeff * cCoeff))) / (2 * aCoeff);
@@ -645,12 +645,15 @@ TVector3 LightPathCalculator::GetNormalVector(const TVector3& point, double tole
       (TMath::Abs(sphereRad - (fIVCapRadius + fAcrylicThickness)) <=
        tolerance)) {  // Checks to see if point is on or close to the inner or outer edge of the acrylic
     if (TMath::Abs(height) <= fIVCylHeight) {
+      std::cout << "made it uno" << std::endl;
       normalVector.SetXYZ(point.X(), point.Y(), 0.0);
       normalVector = normalVector.Unit();
     } else if (height > 0) {
+      std::cout << "made it dos" << std::endl;
       normalVector.SetXYZ(point.X(), point.Y(), point.Z() + fIVCapOffset);
       normalVector = normalVector.Unit();
     } else if (height < 0) {
+      std::cout << "made it tres" << std::endl;
       normalVector.SetXYZ(point.X(), point.Y(), point.Z() - fIVCapOffset);
       normalVector = normalVector.Unit();
     } else {

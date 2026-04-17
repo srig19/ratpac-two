@@ -98,7 +98,8 @@ class LightPathCalculator {
   /// edge if False
   ///
   /// @return The point where the light path intersects either edge of the acrylic.
-  TVector3 IntersectAcrylic(const TVector3& initPos, const TVector3& initDir, const bool& outerEdge);
+  TVector3 IntersectAcrylic(const TVector3& initPos, const TVector3& initDir, const bool& outerEdge,
+                            const bool& backwardCalc);
 
   // Wrapper function to avoid TGraph using extrapolation beyond the bounding points.
   // It's possible that using the default extrapolation returns unphysical (negative) values
