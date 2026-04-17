@@ -112,6 +112,26 @@ class LightPathCalculator {
   // Function to print out the private member variables
   void PrintPrivateVariables();
 
+  //////////////////////////////
+  ////////// GETTERS ///////////
+  //////////////////////////////
+
+  TVector3 GetEndPos() { return fEndPos; }
+
+  TVector3 GetLightPathEndPos() { return fLightPathEndPos; }
+
+  bool GetIsTIR() { return fIsTIR; }
+
+  bool GetIsStraightLine() { return fStraightLine; }
+
+  std::string GetStartingRegion() { return fStartingRegion; }
+
+  Double_t GetDistInIV() { return fDistInIV; }
+
+  Double_t GetDistInAcrylic() { return fDistInAcrylic; }
+
+  Double_t GetDistInOV() { return fDistInOV; }
+
  private:
   eLightPathType fLightPathType;  // Light path type, based on what regions of the detector the path enters
   std::map<eLightPathType, std::string> fLightPathTypeMap;  // Map containing a descriptor for the light path type
