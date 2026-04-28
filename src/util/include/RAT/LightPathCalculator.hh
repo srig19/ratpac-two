@@ -194,6 +194,8 @@ class LightPathCalculator {
 
   Double_t fFresnelTCoeff;  // The combined Fresnel TRANSMISSION coefficient for this path
   Double_t fFresnelRCoeff;  // The combined Fresnel REFLECTIVITY coefficient for this path
+
+  Bool_t fDebug = false;
 };
 }  // namespace RAT
 
