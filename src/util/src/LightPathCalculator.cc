@@ -4,7 +4,8 @@
 namespace RAT {
 // Constructor where user assigns the material for each region. Refractive indices are pulled from optics tables
 LightPathCalculator::LightPathCalculator(const std::string& materialIV, const std::string& materialAcrylic,
-                                         const std::string& materialOV) {
+                                         const std::string& materialOV, const Bool_t& debugFlag) {
+  fDebug = debugFlag;
   if (fDebug) std::cout << "Entering constructor" << std::endl;
   DB* db = DB::Get();
   fUseOpticsTables = true;
@@ -110,7 +111,9 @@ LightPathCalculator::LightPathCalculator(const std::string& materialIV, const st
 }
 
 // Constructor where user chooses a single refractive index for each material
-LightPathCalculator::LightPathCalculator(const Double_t& refIV, const Double_t& refAcrylic, const Double_t& refOV) {
+LightPathCalculator::LightPathCalculator(const Double_t& refIV, const Double_t& refAcrylic, const Double_t& refOV,
+                                         const Bool_t& debugFlag) {
+  fDebug = debugFlag;
   if (fDebug) std::cout << "Entering constructor" << std::endl;
   fUseOpticsTables = false;
 
@@ -150,8 +153,8 @@ void LightPathCalculator::SetValues() {
   fAcrylicThickness = 25.4;  // Acrylic is 1 inch thick
   fBarrelPMTRadius = 1049.6;
   fBarrelPMTHeight = 658.8;  // This is HALF the height
-  fTopPMTRadius = 1070.0;
-  fBotPMTRadius = 1070.0;
+  fTopPMTRadius = 1070.0 + fIVCapOffset;
+  fBotPMTRadius = 1070.0 + fIVCapOffset;
 
   // Making the Light Path Type Map
   fLightPathTypeMap[IAO] = "IV->Acrylic->OV";
@@ -488,8 +491,7 @@ TVector3 LightPathCalculator::IntersectAcrylic(const TVector3& initPos, const TV
   // cylinder height. rho(t) = sqrt((rho_0x^2 + v_0x^2 * t)^2 + (rho_0y^2 + v_0y^2 * t)^2) = fIVCylRadius. This becomes
   // a quadratic equation in t, with the following coefficients
 
-  Double_t aCoeff = (initDir.X() * initDir.X()) +
-                    (initDir.Y() * initDir.Y());  // std::pow(initDir.X(), 2) + std::pow(initDir.Y(), 2);
+  Double_t aCoeff = (initDir.X() * initDir.X()) + (initDir.Y() * initDir.Y());
   Double_t bCoeff = 2 * (initPos.X() * initDir.X() + initPos.Y() * initDir.Y());
   Double_t cCoeff = (startingRho * startingRho) -
                     (acrylicCylRad * acrylicCylRad);  // std::pow(startingRho, 2) - std::pow(acrylicCylRad, 2);
@@ -689,22 +691,25 @@ std::string LightPathCalculator::DetermineRegion(const TVector3& point) {
   double sphereRad = testCapPoint.Mag();
   double height = point.Z();
 
+  if (fDebug) std::cout << "DetermineRegion values: " << cylRad << ", " << sphereRad << ", " << height << std::endl;
+
   if (cylRad < fIVCylRadius) {
+    if (fDebug) std::cout << "Within IV Cyl: " << cylRad << std::endl;
     if (TMath::Abs(height) < fIVCylHeight) {
       return "IV";
     } else if (sphereRad < fIVCapRadius) {
       return "IV";
-    } else if (sphereRad < (fIVCapRadius + fAcrylicThickness)) {
+    } else if (sphereRad <= (fIVCapRadius + fAcrylicThickness)) {
       return "Acrylic";
     } else {
       if (height > 0) {
-        if (height < fTopPMTRadius) {
+        if (sphereRad < fTopPMTRadius) {  // height < fTopPMTRadius
           return "OV";
         } else {
           return "Past PMT";
         }
       } else if (height < 0) {
-        if (TMath::Abs(height) > fBotPMTRadius) {
+        if (sphereRad < fBotPMTRadius) {  // TMath::Abs(height) > fBotPMTRadius
           return "OV";
         } else {
           return "Past PMT";
@@ -715,18 +720,21 @@ std::string LightPathCalculator::DetermineRegion(const TVector3& point) {
         return "NULL";
       }
     }
-  } else if (cylRad < (fIVCylRadius + fAcrylicThickness)) {
+  } else if (cylRad <= (fIVCylRadius + fAcrylicThickness)) {
+    if (fDebug) std::cout << "Within Acrylic: " << cylRad << std::endl;
     if (TMath::Abs(height) < fIVCylHeight) {
+      return "Acrylic";
+    } else if (sphereRad < (fIVCapRadius + fAcrylicThickness)) {
       return "Acrylic";
     } else {
       if (height > 0) {
-        if (height < fTopPMTRadius) {
+        if (sphereRad < fTopPMTRadius) {  // height < fTopPMTRadius
           return "OV";
         } else {
           return "Past PMT";
         }
       } else if (height < 0) {
-        if (TMath::Abs(height) > fBotPMTRadius) {
+        if (sphereRad < fBotPMTRadius) {  // TMath::Abs(height) > fBotPMTRadius
           return "OV";
         } else {
           return "Past PMT";
@@ -738,17 +746,18 @@ std::string LightPathCalculator::DetermineRegion(const TVector3& point) {
       }
     }
   } else if (cylRad <= fBarrelPMTRadius) {
+    if (fDebug) std::cout << "Within Barrel PMT rad: " << cylRad << std::endl;
     if (TMath::Abs(height) < fBarrelPMTHeight) {
       return "OV";
     } else {
       if (height > 0) {
-        if (height < fTopPMTRadius) {
+        if (sphereRad < fTopPMTRadius) {  // height < fTopPMTRadius
           return "OV";
         } else {
           return "Past PMT";
         }
       } else if (height < 0) {
-        if (TMath::Abs(height) > fBotPMTRadius) {
+        if (sphereRad < fBotPMTRadius) {  // TMath::Abs(height) > fBotPMTRadius
           return "OV";
         } else {
           return "Past PMT";
@@ -760,6 +769,7 @@ std::string LightPathCalculator::DetermineRegion(const TVector3& point) {
       }
     }
   } else {
+    if (fDebug) std::cout << "Past PMT: " << cylRad << std::endl;
     return "Past PMT";
   }
 }
@@ -784,9 +794,9 @@ void LightPathCalculator::PrintPrivateVariables() {
             << "Starting position: (" << fStartPos.X() << ", " << fStartPos.Y() << ", " << fStartPos.Z() << ")"
             << std::endl
             << "Starting region: " << fStartingRegion << std::endl
-            << "Ending position (user input): " << fEndPos.X() << ", " << fEndPos.Y() << ", " << fEndPos.Z() << ")"
+            << "Ending position (user input): (" << fEndPos.X() << ", " << fEndPos.Y() << ", " << fEndPos.Z() << ")"
             << std::endl
-            << "Ending position (calculated): " << fLightPathEndPos.X() << ", " << fLightPathEndPos.Y() << ", "
+            << "Ending position (calculated): (" << fLightPathEndPos.X() << ", " << fLightPathEndPos.Y() << ", "
             << fLightPathEndPos.Z() << ")" << std::endl
             << "-----------------------------------------------" << std::endl
             << "Refractive indices: " << fIVRefIndex << ", " << fAcrylicRefIndex << ", " << fOVRefIndex << std::endl
